@@ -4,6 +4,7 @@ import path from 'node:path';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { findOpenPort, startServer, resolvePaths } from '../server.mjs';
+import { readdir, mkdir as mkdirp, writeFile as writeFileP } from 'node:fs/promises';
 
 test('resolvePaths returns expected file names', () => {
   const p = resolvePaths('/tmp/x');
@@ -62,4 +63,30 @@ test('GET /api/data returns null when no file yet', async () => {
     const got = await (await fetch(`http://127.0.0.1:${port}/api/data`)).json();
     assert.equal(got, null);
   } finally { server.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test('snapshotIfNeeded writes at most once per day', async () => {
+  const { snapshotIfNeeded } = await import('../server.mjs');
+  const dir = await mkdtemp(path.join(tmpdir(), 'wl-'));
+  const backups = path.join(dir, 'backups');
+  const first = await snapshotIfNeeded({ a: 1 }, backups, '2026-07-02');
+  const second = await snapshotIfNeeded({ a: 2 }, backups, '2026-07-02');
+  assert.equal(first, true);
+  assert.equal(second, false);
+  assert.deepEqual(await readdir(backups), ['2026-07-02.json']);
+  await rm(dir, { recursive: true, force: true });
+});
+
+test('pruneBackups keeps only the newest N snapshots', async () => {
+  const { pruneBackups } = await import('../server.mjs');
+  const dir = await mkdtemp(path.join(tmpdir(), 'wl-'));
+  const backups = path.join(dir, 'backups');
+  await mkdirp(backups, { recursive: true });
+  for (const d of ['2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04']) {
+    await writeFileP(path.join(backups, `${d}.json`), '{}', 'utf8');
+  }
+  const removed = await pruneBackups(backups, 2);
+  assert.deepEqual(removed, ['2026-06-01', '2026-06-02']);
+  assert.deepEqual((await readdir(backups)).sort(), ['2026-06-03.json', '2026-06-04.json']);
+  await rm(dir, { recursive: true, force: true });
 });

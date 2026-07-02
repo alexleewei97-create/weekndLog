@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir, stat, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import net from 'node:net';
@@ -30,6 +30,35 @@ export async function readJSON(filePath, fallbackObj) {
 export async function atomicWriteJSON(filePath, tmpPath, obj) {
   await writeFile(tmpPath, JSON.stringify(obj, null, 2), 'utf8');
   await rename(tmpPath, filePath);
+}
+
+export async function snapshotIfNeeded(dataObj, backupsDir, todayStr) {
+  await mkdir(backupsDir, { recursive: true });
+  const snapPath = path.join(backupsDir, `${todayStr}.json`);
+  try { await stat(snapPath); return false; }
+  catch {
+    await writeFile(snapPath, JSON.stringify(dataObj, null, 2), 'utf8');
+    return true;
+  }
+}
+
+export async function pruneBackups(backupsDir, retention) {
+  let files;
+  try { files = await readdir(backupsDir); } catch { return []; }
+  const snaps = files.filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort();
+  const removed = [];
+  while (snaps.length > retention) {
+    const f = snaps.shift();
+    await rm(path.join(backupsDir, f), { force: true });
+    removed.push(f.replace(/\.json$/, ''));
+  }
+  return removed;
+}
+
+function todayStr() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
 function readBody(req) {
@@ -96,7 +125,9 @@ export function createRequestHandler({ rootDir, retention = 30 }) {
           const obj = JSON.parse(await readBody(req));
           await mkdir(paths.backupsDir, { recursive: true });
           await atomicWriteJSON(paths.dataFile, paths.tmpFile, obj);
-          // Snapshot + prune are added in Task 5.
+          const retentionN = (obj && obj.settings && obj.settings.backupRetention) || retention;
+          await snapshotIfNeeded(obj, paths.backupsDir, todayStr());
+          await pruneBackups(paths.backupsDir, retentionN);
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ ok: true }));
         } catch (e) {
