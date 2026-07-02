@@ -109,9 +109,6 @@ button.link { background: none; border: 0; color: var(--brand-ink); text-decorat
 
 .triage { display: flex; gap: 4px; flex-wrap: wrap; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
-.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px; }
-.seg button { border: 0; background: transparent; color: var(--ink-2); padding: 5px 16px; border-radius: 999px; font-size: 13.5px; cursor: pointer; }
-.seg button.on { background: var(--surface); color: var(--brand-ink); font-weight: 600; box-shadow: var(--shadow-1); }
 
 .daynav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .daynav .date { font-size: 15px; font-weight: 600; }
