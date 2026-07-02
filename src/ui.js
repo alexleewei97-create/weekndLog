@@ -103,20 +103,21 @@
     state = L.addCapture(state, text, new Date().toISOString()).state;
     el.value = ''; save(); render();
   };
-  actions.deleteCapture = (el) => {
-    const item = state.captureItems.find((c) => c.id === el.dataset.id);
-    state = L.removeEntity(state, 'captureItems', el.dataset.id);
-    save(); render(); offerUndo('captureItems', item);
-  };
   actions.triage = (el) => {
     const id = el.dataset.id, target = el.dataset.target;
+    if (target === 'delete') {
+      const item = state.captureItems.find((c) => c.id === id);
+      state = L.triageCapture(state, id, 'delete', {});
+      save(); render();
+      if (item) offerUndo('captureItems', item); else toast('已删除');
+      return;
+    }
     if (target === 'log') state = L.triageCapture(state, id, 'log', { date: L.isoDate(new Date()) });
     else if (target === 'task') state = L.triageCapture(state, id, 'task', {});
     else if (target === 'idea') state = L.triageCapture(state, id, 'collection', { type: 'idea' });
     else if (target === 'note') state = L.triageCapture(state, id, 'collection', { type: 'note' });
-    else state = L.triageCapture(state, id, 'delete', {});
     save(); render();
-    toast(target === 'delete' ? '已删除' : '已整理到' + ({ log: '成果', task: '待办', idea: '灵感', note: '笔记' }[target]));
+    toast('已整理到' + ({ log: '成果', task: '待办', idea: '灵感', note: '笔记' }[target]));
   };
 
   function renderTabs() {
