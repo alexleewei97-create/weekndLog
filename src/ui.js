@@ -64,6 +64,7 @@
   const STATUS_PILL = {
     task: { todo: ['muted', '待办'], doing: ['doing', '进行中'], done: ['ok', '已完成'] },
     goal: { planned: ['muted', '计划中'], inProgress: ['doing', '进行中'], done: ['ok', '已完成'], dropped: ['muted', '已放弃'] },
+    idea: { raw: ['muted', '原始'], incubating: ['doing', '孵化中'], converted: ['ok', '已转任务'], archived: ['muted', '归档'] },
   };
   function statusPill(kind, value) {
     const m = (STATUS_PILL[kind] || {})[value]; if (!m) return '';
@@ -351,24 +352,38 @@
   let colFilter = { type: '', query: '' };
   function renderColRow(c) {
     const isIdea = c.type === 'idea';
+    if (editing.has(c.id)) {
+      return `<div class="card" data-id="${c.id}" style="border-left-color:${projectColor(c.projectId)}">
+        <div class="line">
+          <span class="badge">${isIdea ? '灵感' : '笔记'}</span>
+          <input class="grow" value="${esc(c.text)}" data-change="editColText" data-id="${c.id}" />
+          <button class="mini" data-action="doneEdit" data-id="${c.id}">完成</button>
+        </div>
+        <div class="meta">
+          <select data-change="editColProject" data-id="${c.id}">${projectOptions(c.projectId)}</select>
+          <input class="tags" placeholder="标签" value="${esc((c.tags || []).join(', '))}" data-change="editColTags" data-id="${c.id}" />
+          ${isIdea ? `<select data-change="editIdeaStatus" data-id="${c.id}">
+            <option value="raw"${c.ideaStatus === 'raw' ? ' selected' : ''}>原始</option>
+            <option value="incubating"${c.ideaStatus === 'incubating' ? ' selected' : ''}>孵化中</option>
+            <option value="converted"${c.ideaStatus === 'converted' ? ' selected' : ''}>已转任务</option>
+            <option value="archived"${c.ideaStatus === 'archived' ? ' selected' : ''}>归档</option>
+          </select>` : ''}
+        </div>
+      </div>`;
+    }
+    const hasMeta = c.projectId || (c.tags && c.tags.length);
     return `<div class="card" data-id="${c.id}" style="border-left-color:${projectColor(c.projectId)}">
       <div class="line">
         <span class="badge">${isIdea ? '灵感' : '笔记'}</span>
-        <input class="grow" value="${esc(c.text)}" data-change="editColText" data-id="${c.id}" />
+        <span class="grow">${esc(c.text)}</span>
+        ${isIdea ? statusPill('idea', c.ideaStatus) : ''}
         ${isIdea && c.ideaStatus !== 'converted' ? `<button class="mini" data-action="ideaToTask" data-id="${c.id}">转待办</button>` : ''}
-        ${isIdea && c.ideaStatus === 'converted' ? '<span class="muted">已转待办</span>' : ''}
-        <button class="mini danger" data-action="deleteEntry" data-key="collectionItems" data-id="${c.id}">删除</button>
+        <span class="rowacts">
+          <button class="iconbtn" data-action="startEdit" data-id="${c.id}" title="编辑">✎</button>
+          <button class="iconbtn danger" data-action="deleteEntry" data-key="collectionItems" data-id="${c.id}" title="删除">🗑</button>
+        </span>
       </div>
-      <div class="meta">
-        <select data-change="editColProject" data-id="${c.id}">${projectOptions(c.projectId)}</select>
-        <input class="tags" placeholder="标签" value="${esc((c.tags || []).join(', '))}" data-change="editColTags" data-id="${c.id}" />
-        ${isIdea ? `<select data-change="editIdeaStatus" data-id="${c.id}">
-          <option value="raw"${c.ideaStatus === 'raw' ? ' selected' : ''}>原始</option>
-          <option value="incubating"${c.ideaStatus === 'incubating' ? ' selected' : ''}>孵化中</option>
-          <option value="converted"${c.ideaStatus === 'converted' ? ' selected' : ''}>已转任务</option>
-          <option value="archived"${c.ideaStatus === 'archived' ? ' selected' : ''}>归档</option>
-        </select>` : ''}
-      </div>
+      ${hasMeta ? `<div class="meta">${projectChip(c.projectId)}${(c.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ')}</div>` : ''}
     </div>`;
   }
   function renderCollection() {
@@ -399,21 +414,34 @@
   function renderProjectsSettings() {
     return `<section class="pad">${sectionTitle('项目 / 游戏')}
       <div class="addrow"><input data-submit="addProject" placeholder="新增项目…（回车）" /></div>
-      ${state.projects.length ? state.projects.map((p) => `<div class="row" data-id="${p.id}">
+      ${state.projects.length ? state.projects.map((p) => editing.has(p.id) ? `<div class="row" data-id="${p.id}">
         <input class="grow" value="${esc(p.name)}" data-change="editProjectName" data-id="${p.id}" />
-        <input type="color" value="${esc(p.color || '#3b6ef5')}" data-change="editProjectColor" data-id="${p.id}" />
+        <input type="color" value="${esc(p.color || '#4c6ef5')}" data-change="editProjectColor" data-id="${p.id}" />
+        <button class="mini" data-action="doneEdit" data-id="${p.id}">完成</button>
+      </div>` : `<div class="row" data-id="${p.id}">
+        <span class="pdot" style="background:${projectColor(p.id)}"></span>
+        <span class="grow">${esc(p.name)}${p.archived ? ' <span class="muted">已归档</span>' : ''}</span>
         <button class="mini" data-action="toggleProjectArchive" data-id="${p.id}">${p.archived ? '取消归档' : '归档'}</button>
-        <button class="mini danger" data-action="deleteEntry" data-key="projects" data-id="${p.id}">删除</button>
+        <span class="rowacts">
+          <button class="iconbtn" data-action="startEdit" data-id="${p.id}" title="编辑">✎</button>
+          <button class="iconbtn danger" data-action="deleteEntry" data-key="projects" data-id="${p.id}" title="删除">🗑</button>
+        </span>
       </div>`).join('') : emptyState('还没有项目', '🎮')}
     </section>`;
   }
   function renderWorkTypesSettings() {
     return `<section class="pad">${sectionTitle('工作类型')}
       <div class="addrow"><input data-submit="addWorkType" placeholder="新增工作类型…（回车）" /></div>
-      ${state.workTypes.map((w) => `<div class="row" data-id="${w.id}">
+      ${state.workTypes.map((w) => editing.has(w.id) ? `<div class="row" data-id="${w.id}">
         <input class="grow" value="${esc(w.name)}" data-change="editWorkTypeName" data-id="${w.id}" />
+        <button class="mini" data-action="doneEdit" data-id="${w.id}">完成</button>
+      </div>` : `<div class="row" data-id="${w.id}">
+        <span class="grow">${esc(w.name)}${w.archived ? ' <span class="muted">已归档</span>' : ''}</span>
         <button class="mini" data-action="toggleWorkTypeArchive" data-id="${w.id}">${w.archived ? '取消归档' : '归档'}</button>
-        <button class="mini danger" data-action="deleteEntry" data-key="workTypes" data-id="${w.id}">删除</button>
+        <span class="rowacts">
+          <button class="iconbtn" data-action="startEdit" data-id="${w.id}" title="编辑">✎</button>
+          <button class="iconbtn danger" data-action="deleteEntry" data-key="workTypes" data-id="${w.id}" title="删除">🗑</button>
+        </span>
       </div>`).join('')}
     </section>`;
   }
