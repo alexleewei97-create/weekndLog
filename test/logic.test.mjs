@@ -57,3 +57,20 @@ test('dateInPeriod', () => {
   assert.equal(L.dateInPeriod('2026-08-01', 'month', '2026-07'), false);
   assert.equal(L.dateInPeriod('2026-09-30', 'quarter', '2026-Q3'), true);
 });
+
+test('addCapture appends a pending capture item', () => {
+  const s = L.createEmptyState();
+  const r = L.addCapture(s, '写关卡文档', '2026-07-02T09:00:00.000Z');
+  assert.equal(r.state.captureItems.length, 1);
+  assert.equal(r.item.status, 'pending');
+  assert.equal(r.item.text, '写关卡文档');
+});
+
+test('updateEntity patches and removeEntity removes', () => {
+  let s = L.createEmptyState();
+  const r = L.addCapture(s, 'x', '2026-07-02T09:00:00.000Z'); s = r.state;
+  s = L.updateEntity(s, 'captureItems', r.item.id, { status: 'triaged' });
+  assert.equal(s.captureItems[0].status, 'triaged');
+  s = L.removeEntity(s, 'captureItems', r.item.id);
+  assert.equal(s.captureItems.length, 0);
+});

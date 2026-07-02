@@ -57,8 +57,29 @@
     }, 700);
   }
 
+  function todayStr() { return L.isoDate(new Date()); }
+
+  function renderCaptureRow(c) {
+    return `<div class="row" data-id="${c.id}">
+      <span class="grow">${esc(c.text)}</span>
+      <button class="mini danger" data-action="deleteCapture" data-id="${c.id}">删除</button>
+    </div>`;
+  }
+  function renderTodayCapture() {
+    const pending = state.captureItems.filter((c) => c.status === 'pending');
+    return `<section class="pad">
+      <h2>今日 · ${todayStr()}</h2>
+      <div class="capture"><input id="capture-input" data-submit="addCapture"
+        placeholder="随手记一条…（回车存入收件箱）" /></div>
+      <h3>收件箱 <span class="muted">${pending.length}</span></h3>
+      ${pending.length ? pending.map(renderCaptureRow).join('') : '<p class="muted">暂无待整理条目</p>'}
+    </section>`;
+  }
+  function renderTodayAccomplishments() { return '<section class="pad"><h3>今日成果</h3><p class="muted">（Task 10）</p></section>'; }
+  function renderTodayTasks() { return '<section class="pad"><h3>今日待办</h3><p class="muted">（Task 11）</p></section>'; }
+
   const renderers = {
-    today: () => '<section class="pad"><h2>今日</h2><p class="muted">（建设中）</p></section>',
+    today: () => renderTodayCapture() + renderTodayAccomplishments() + renderTodayTasks(),
     backlog: () => '<section class="pad"><h2>待办</h2><p class="muted">（建设中）</p></section>',
     planning: () => '<section class="pad"><h2>规划</h2><p class="muted">（建设中）</p></section>',
     collection: () => '<section class="pad"><h2>收集</h2><p class="muted">（建设中）</p></section>',
@@ -68,6 +89,19 @@
   };
   const actions = {};
   const afterRender = {};
+
+  afterRender.today = () => { const i = document.getElementById('capture-input'); if (i) i.focus(); };
+
+  actions.addCapture = (el) => {
+    const text = el.value.trim(); if (!text) return;
+    state = L.addCapture(state, text, new Date().toISOString()).state;
+    el.value = ''; save(); render();
+  };
+  actions.deleteCapture = (el) => {
+    const item = state.captureItems.find((c) => c.id === el.dataset.id);
+    state = L.removeEntity(state, 'captureItems', el.dataset.id);
+    save(); render(); offerUndo('captureItems', item);
+  };
 
   function renderTabs() {
     document.getElementById('tabs').innerHTML = TABS.map((t) =>

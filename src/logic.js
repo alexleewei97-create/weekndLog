@@ -139,6 +139,17 @@
     return dateStr >= start && dateStr <= end;
   }
 
+  function addCapture(state, text, nowIso) {
+    const item = { id: uid('cap'), text, createdAt: nowIso, status: 'pending' };
+    return { state: { ...state, captureItems: [...state.captureItems, item] }, item };
+  }
+  function updateEntity(state, key, id, patch) {
+    return { ...state, [key]: state[key].map((x) => (x.id === id ? { ...x, ...patch } : x)) };
+  }
+  function removeEntity(state, key, id) {
+    return { ...state, [key]: state[key].filter((x) => x.id !== id) };
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -148,5 +159,6 @@
     createEmptyState,
     isoDate, parseDate, weekId, monthId, quarterId, halfId,
     periodRange, periodLabel, shiftPeriod, dateInPeriod,
+    addCapture, updateEntity, removeEntity,
   };
 });
