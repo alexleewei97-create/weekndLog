@@ -81,7 +81,30 @@
       ${pending.length ? pending.map(renderCaptureRow).join('') : '<p class="muted">暂无待整理条目</p>'}
     </section>`;
   }
-  function renderTodayAccomplishments() { return '<section class="pad"><h3>今日成果</h3><p class="muted">（Task 10）</p></section>'; }
+  function renderAccRow(e) {
+    return `<div class="card" data-id="${e.id}">
+      <div class="line">
+        <button class="star${e.isHighlight ? ' on' : ''}" data-action="toggleHighlight" data-id="${e.id}" title="标为亮点">★</button>
+        <input class="grow" value="${esc(e.text)}" data-change="editAccText" data-id="${e.id}" />
+        <button class="mini danger" data-action="deleteEntry" data-key="logEntries" data-id="${e.id}">删除</button>
+      </div>
+      <div class="meta">
+        <select data-change="editAccProject" data-id="${e.id}">${projectOptions(e.projectId)}</select>
+        <select data-change="editAccType" data-id="${e.id}">${workTypeOptions(e.workType)}</select>
+        <input class="tags" placeholder="标签，逗号分隔" value="${esc((e.tags || []).join(', '))}" data-change="editAccTags" data-id="${e.id}" />
+      </div>
+    </div>`;
+  }
+  function renderTodayAccomplishments() {
+    const today = L.isoDate(new Date());
+    const items = state.logEntries.filter((e) => e.date === today);
+    return `<section class="pad">
+      <h3>今日成果 <span class="muted">${items.length}</span></h3>
+      <div class="addrow"><input id="acc-input" data-submit="addAccomplishment"
+        placeholder="直接记一条今日成果…（回车添加）" /></div>
+      ${items.length ? items.map(renderAccRow).join('') : '<p class="muted">今天还没有成果记录</p>'}
+    </section>`;
+  }
   function renderTodayTasks() { return '<section class="pad"><h3>今日待办</h3><p class="muted">（Task 11）</p></section>'; }
 
   const renderers = {
@@ -118,6 +141,26 @@
     else if (target === 'note') state = L.triageCapture(state, id, 'collection', { type: 'note' });
     save(); render();
     toast('已整理到' + ({ log: '成果', task: '待办', idea: '灵感', note: '笔记' }[target]));
+  };
+
+  actions.addAccomplishment = (el) => {
+    const text = el.value.trim(); if (!text) return;
+    state = L.addLogEntry(state, { text, date: L.isoDate(new Date()) });
+    el.value = ''; save(); render();
+  };
+  actions.toggleHighlight = (el) => {
+    const e = state.logEntries.find((x) => x.id === el.dataset.id);
+    state = L.updateEntity(state, 'logEntries', el.dataset.id, { isHighlight: !e.isHighlight });
+    save(); render();
+  };
+  actions.editAccText = (el) => { state = L.updateEntity(state, 'logEntries', el.dataset.id, { text: el.value }); save(); };
+  actions.editAccProject = (el) => { state = L.updateEntity(state, 'logEntries', el.dataset.id, { projectId: el.value || null }); save(); };
+  actions.editAccType = (el) => { state = L.updateEntity(state, 'logEntries', el.dataset.id, { workType: el.value || null }); save(); };
+  actions.editAccTags = (el) => { state = L.updateEntity(state, 'logEntries', el.dataset.id, { tags: parseTags(el.value) }); save(); };
+  actions.deleteEntry = (el) => {
+    const key = el.dataset.key, id = el.dataset.id;
+    const item = state[key].find((x) => x.id === id);
+    state = L.removeEntity(state, key, id); save(); render(); offerUndo(key, item);
   };
 
   function renderTabs() {
