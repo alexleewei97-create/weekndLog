@@ -217,6 +217,15 @@
     return state.goals.filter((g) => g.horizon === horizon && g.period === periodId);
   }
 
+  function convertIdeaToTask(state, collectionId, nowIso) {
+    const item = state.collectionItems.find((c) => c.id === collectionId);
+    if (!item) return { state, task: null };
+    const s1 = addTask(state, { text: item.text, projectId: item.projectId, tags: item.tags, createdAt: nowIso });
+    const task = s1.tasks[s1.tasks.length - 1];
+    const s2 = updateEntity(s1, 'collectionItems', collectionId, { ideaStatus: 'converted', convertedTaskId: task.id });
+    return { state: s2, task };
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -230,5 +239,6 @@
     addLogEntry, addTask, addCollection, triageCapture,
     unfinishedBefore, carryOverTask, filterTasks,
     addGoal, goalsFor,
+    convertIdeaToTask,
   };
 });

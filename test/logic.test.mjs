@@ -135,3 +135,14 @@ test('addGoal and goalsFor scope by horizon+period', () => {
   assert.equal(L.goalsFor(s, 'quarter', '2026-Q2').length, 0);
   assert.equal(L.goalsFor(s, 'month', '2026-07')[0].title, '完成关卡 1-5');
 });
+
+test('convertIdeaToTask creates a task and marks idea converted', () => {
+  let s = L.createEmptyState();
+  s = L.addCollection(s, { type: 'idea', text: '双人合作模式', tags: ['玩法'] });
+  const id = s.collectionItems[0].id;
+  const r = L.convertIdeaToTask(s, id, '2026-07-02T10:00:00.000Z');
+  assert.equal(r.task.text, '双人合作模式');
+  assert.equal(r.state.tasks.length, 1);
+  assert.equal(r.state.collectionItems[0].ideaStatus, 'converted');
+  assert.equal(r.state.collectionItems[0].convertedTaskId, r.task.id);
+});

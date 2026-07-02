@@ -216,11 +216,59 @@
       + horizons.map(([h, label]) => renderHorizon(h, label)).join('');
   }
 
+  let colFilter = { type: '', query: '' };
+  function renderColRow(c) {
+    const isIdea = c.type === 'idea';
+    return `<div class="card" data-id="${c.id}">
+      <div class="line">
+        <span class="badge">${isIdea ? '灵感' : '笔记'}</span>
+        <input class="grow" value="${esc(c.text)}" data-change="editColText" data-id="${c.id}" />
+        ${isIdea && c.ideaStatus !== 'converted' ? `<button class="mini" data-action="ideaToTask" data-id="${c.id}">转待办</button>` : ''}
+        ${isIdea && c.ideaStatus === 'converted' ? '<span class="muted">已转待办</span>' : ''}
+        <button class="mini danger" data-action="deleteEntry" data-key="collectionItems" data-id="${c.id}">删除</button>
+      </div>
+      <div class="meta">
+        <select data-change="editColProject" data-id="${c.id}">${projectOptions(c.projectId)}</select>
+        <input class="tags" placeholder="标签" value="${esc((c.tags || []).join(', '))}" data-change="editColTags" data-id="${c.id}" />
+        ${isIdea ? `<select data-change="editIdeaStatus" data-id="${c.id}">
+          <option value="raw"${c.ideaStatus === 'raw' ? ' selected' : ''}>原始</option>
+          <option value="incubating"${c.ideaStatus === 'incubating' ? ' selected' : ''}>孵化中</option>
+          <option value="converted"${c.ideaStatus === 'converted' ? ' selected' : ''}>已转任务</option>
+          <option value="archived"${c.ideaStatus === 'archived' ? ' selected' : ''}>归档</option>
+        </select>` : ''}
+      </div>
+    </div>`;
+  }
+  function renderCollection() {
+    const q = (colFilter.query || '').toLowerCase();
+    const list = state.collectionItems.filter((c) => {
+      if (colFilter.type && c.type !== colFilter.type) return false;
+      if (q && !(c.text || '').toLowerCase().includes(q) && !(c.tags || []).some((t) => t.toLowerCase().includes(q))) return false;
+      return true;
+    });
+    return `<section class="pad">
+      <h2>收集</h2>
+      <div class="addrow">
+        <input id="col-input" class="grow" data-submit="addNote" placeholder="记一条笔记…（回车添加为笔记）" />
+        <button class="mini" data-action="addIdeaBtn">+ 存为灵感</button>
+      </div>
+      <div class="filters">
+        <select data-change="colType">
+          <option value="">全部</option>
+          <option value="note"${colFilter.type === 'note' ? ' selected' : ''}>笔记</option>
+          <option value="idea"${colFilter.type === 'idea' ? ' selected' : ''}>灵感</option>
+        </select>
+        <input placeholder="搜索（回车）" value="${esc(colFilter.query)}" data-change="colQuery" />
+      </div>
+      ${list.length ? list.map(renderColRow).join('') : '<p class="muted">还没有收集条目</p>'}
+    </section>`;
+  }
+
   const renderers = {
     today: () => renderTodayCapture() + renderTodayAccomplishments() + renderTodayTasks(),
     backlog: renderBacklog,
     planning: renderPlanning,
-    collection: () => '<section class="pad"><h2>收集</h2><p class="muted">（建设中）</p></section>',
+    collection: renderCollection,
     report: () => '<section class="pad"><h2>汇报</h2><p class="muted">（建设中）</p></section>',
     archive: () => '<section class="pad"><h2>档案</h2><p class="muted">（建设中）</p></section>',
     settings: () => '<section class="pad"><h2>设置</h2><p class="muted">（建设中）</p></section>',
@@ -304,6 +352,16 @@
   actions.editGoalStatus = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { status: el.value }); save(); render(); };
   actions.editGoalProject = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { projectId: el.value || null }); save(); };
   actions.editGoalNote = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { progressNote: el.value }); save(); };
+
+  actions.addNote = (el) => { const text = el.value.trim(); if (!text) return; state = L.addCollection(state, { type: 'note', text }); el.value = ''; save(); render(); };
+  actions.addIdeaBtn = () => { const inp = document.getElementById('col-input'); const text = (inp && inp.value.trim()) || ''; if (!text) { toast('先在输入框写点灵感内容'); return; } state = L.addCollection(state, { type: 'idea', text }); inp.value = ''; save(); render(); };
+  actions.ideaToTask = (el) => { state = L.convertIdeaToTask(state, el.dataset.id, new Date().toISOString()).state; save(); render(); toast('已转为待办'); };
+  actions.editColText = (el) => { state = L.updateEntity(state, 'collectionItems', el.dataset.id, { text: el.value }); save(); };
+  actions.editColProject = (el) => { state = L.updateEntity(state, 'collectionItems', el.dataset.id, { projectId: el.value || null }); save(); };
+  actions.editColTags = (el) => { state = L.updateEntity(state, 'collectionItems', el.dataset.id, { tags: parseTags(el.value) }); save(); };
+  actions.editIdeaStatus = (el) => { state = L.updateEntity(state, 'collectionItems', el.dataset.id, { ideaStatus: el.value }); save(); render(); };
+  actions.colType = (el) => { colFilter.type = el.value; render(); };
+  actions.colQuery = (el) => { colFilter.query = el.value; render(); };
 
   function renderTabs() {
     document.getElementById('tabs').innerHTML = TABS.map((t) =>
