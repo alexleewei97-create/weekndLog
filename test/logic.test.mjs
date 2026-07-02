@@ -156,3 +156,20 @@ test('addProject and addWorkType append with defaults', () => {
   assert.equal(s.projects[0].archived, false);
   assert.equal(s.workTypes.length, before + 1);
 });
+
+test('generateReport groups outputs by project with headings and highlights', () => {
+  let s = L.createEmptyState();
+  s = L.addProject(s, { name: '消消乐' });
+  const pid = s.projects[0].id;
+  s = L.addLogEntry(s, { text: '完成关卡1', date: '2026-07-02', projectId: pid, workType: '策划', isHighlight: true });
+  s = L.addLogEntry(s, { text: '开策划会', date: '2026-07-03', workType: '会议' });
+  const wid = L.weekId(L.parseDate('2026-07-02'));
+  s = L.addGoal(s, { horizon: 'week', period: wid, title: '关卡1-5 定稿' });
+  const out = L.generateReport(s, 'week', wid);
+  assert.match(out, /^# 周报/m);
+  assert.match(out, /## 重点进展/);
+  assert.match(out, /### 消消乐/);
+  assert.match(out, /⭐ \[策划\] 完成关卡1/);
+  assert.match(out, /### 未归类/);
+  assert.match(out, /关卡1-5 定稿/);
+});

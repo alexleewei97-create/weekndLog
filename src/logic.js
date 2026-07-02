@@ -15,10 +15,7 @@
   }
 
   function defaultTemplates() {
-    return {
-      week: { title: '周报' },
-      month: { title: '月报' },
-    };
+    return { headings: { progress: '重点进展', output: '具体产出', risk: '问题与风险', plan: '下阶段计划' } };
   }
 
   function createEmptyState() {
@@ -235,6 +232,64 @@
     return { ...state, workTypes: [...state.workTypes, w] };
   }
 
+  function projectName(state, id) { const p = state.projects.find((x) => x.id === id); return p ? p.name : '未归类'; }
+
+  function generateReport(state, type, periodId) {
+    const horizon = type; // 'week' | 'month'
+    const { start, end } = periodRange(horizon, periodId);
+    const inPeriod = (d) => d >= start && d <= end;
+    const H = (state.settings.reportTemplates && state.settings.reportTemplates.headings) ||
+      { progress: '重点进展', output: '具体产出', risk: '问题与风险', plan: '下阶段计划' };
+    const typeLabel = type === 'week' ? '周报' : '月报';
+
+    // 1) Progress: goals for this horizon+period; for month, also the containing quarter.
+    const goals = goalsFor(state, horizon, periodId).slice();
+    if (type === 'month') {
+      const qid = quarterId(parseDate(start));
+      for (const g of goalsFor(state, 'quarter', qid)) goals.push(g);
+    }
+    const goalLines = goals.length
+      ? goals.map((g) => `- ${g.projectId ? `[${projectName(state, g.projectId)}] ` : ''}${g.title}${g.progressNote ? ` —— ${g.progressNote}` : ''}`).join('\n')
+      : '（暂无重点目标）';
+
+    // 2) Outputs: log entries + tasks completed in period, grouped by project, highlights first.
+    const logs = state.logEntries.filter((e) => inPeriod(e.date));
+    const doneTasks = state.tasks.filter((t) => t.status === 'done' && t.completedAt && inPeriod(t.completedAt.slice(0, 10)));
+    const byProject = {};
+    const push = (pid, line, hl) => { const k = pid || ''; (byProject[k] = byProject[k] || []).push({ line, hl }); };
+    for (const e of logs) push(e.projectId, `${e.workType ? `[${e.workType}] ` : ''}${e.text}`, e.isHighlight);
+    for (const t of doneTasks) push(t.projectId, `${t.workType ? `[${t.workType}] ` : ''}${t.text}（已完成）`, false);
+    const keys = Object.keys(byProject);
+    const outputLines = keys.length
+      ? keys.map((k) => {
+          const name = k ? projectName(state, k) : '未归类';
+          const items = byProject[k].slice().sort((a, b) => (b.hl ? 1 : 0) - (a.hl ? 1 : 0));
+          return `### ${name}\n` + items.map((it) => `- ${it.hl ? '⭐ ' : ''}${it.line}`).join('\n');
+        }).join('\n\n')
+      : '（本期暂无产出记录）';
+
+    // 3) Risks: items tagged 风险 / #风险 in period.
+    const isRisk = (x) => (x.tags || []).some((t) => t === '风险' || t === '#风险');
+    const risks = logs.filter(isRisk).map((e) => e.text);
+    const riskLines = risks.length ? risks.map((r) => `- ${r}`).join('\n') : '（可手动补充）';
+
+    // 4) Plan: next-period goals + undone week-focus tasks.
+    const nextId = shiftPeriod(horizon, periodId, 1);
+    const planItems = [
+      ...goalsFor(state, horizon, nextId).map((g) => `- ${g.projectId ? `[${projectName(state, g.projectId)}] ` : ''}${g.title}`),
+      ...state.tasks.filter((t) => t.status !== 'done' && t.isWeekFocus).map((t) => `- ${t.projectId ? `[${projectName(state, t.projectId)}] ` : ''}${t.text}`),
+    ];
+    const planLines = planItems.length ? planItems.join('\n') : '（待补充）';
+
+    return [
+      `# ${typeLabel} ${periodLabel(horizon, periodId)}`, '',
+      `## ${H.progress}`, goalLines, '',
+      `## ${H.output}`, outputLines, '',
+      `## ${H.risk}`, riskLines, '',
+      `## ${H.plan}`, planLines, '',
+    ].join('\n');
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -250,5 +305,6 @@
     addGoal, goalsFor,
     convertIdeaToTask,
     addProject, addWorkType,
+    generateReport,
   };
 });
