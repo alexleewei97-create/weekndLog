@@ -129,17 +129,31 @@
     </section>`;
   }
   function renderAccRow(e) {
+    if (editing.has(e.id)) {
+      return `<div class="card" data-id="${e.id}" style="border-left-color:${projectColor(e.projectId)}">
+        <div class="line">
+          <button class="star${e.isHighlight ? ' on' : ''}" data-action="toggleHighlight" data-id="${e.id}" title="标为亮点">★</button>
+          <input class="grow" value="${esc(e.text)}" data-change="editAccText" data-id="${e.id}" />
+          <button class="mini" data-action="doneEdit" data-id="${e.id}">完成</button>
+        </div>
+        <div class="meta">
+          <select data-change="editAccProject" data-id="${e.id}">${projectOptions(e.projectId)}</select>
+          <select data-change="editAccType" data-id="${e.id}">${workTypeOptions(e.workType)}</select>
+          <input class="tags" placeholder="标签，逗号分隔" value="${esc((e.tags || []).join(', '))}" data-change="editAccTags" data-id="${e.id}" />
+        </div>
+      </div>`;
+    }
+    const hasMeta = e.projectId || e.workType || (e.tags && e.tags.length);
     return `<div class="card" data-id="${e.id}" style="border-left-color:${projectColor(e.projectId)}">
       <div class="line">
         <button class="star${e.isHighlight ? ' on' : ''}" data-action="toggleHighlight" data-id="${e.id}" title="标为亮点">★</button>
-        <input class="grow" value="${esc(e.text)}" data-change="editAccText" data-id="${e.id}" />
-        <button class="mini danger" data-action="deleteEntry" data-key="logEntries" data-id="${e.id}">删除</button>
+        <span class="grow">${esc(e.text)}</span>
+        <span class="rowacts">
+          <button class="iconbtn" data-action="startEdit" data-id="${e.id}" title="编辑">✎</button>
+          <button class="iconbtn danger" data-action="deleteEntry" data-key="logEntries" data-id="${e.id}" title="删除">🗑</button>
+        </span>
       </div>
-      <div class="meta">
-        <select data-change="editAccProject" data-id="${e.id}">${projectOptions(e.projectId)}</select>
-        <select data-change="editAccType" data-id="${e.id}">${workTypeOptions(e.workType)}</select>
-        <input class="tags" placeholder="标签，逗号分隔" value="${esc((e.tags || []).join(', '))}" data-change="editAccTags" data-id="${e.id}" />
-      </div>
+      ${hasMeta ? `<div class="meta">${projectChip(e.projectId)}${e.workType ? `<span class="chip">${esc(e.workType)}</span>` : ''}${(e.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ')}</div>` : ''}
     </div>`;
   }
   function renderTodayAccomplishments() {
@@ -196,25 +210,40 @@
     ).join('');
   }
   function renderTaskRow(t) {
+    if (editing.has(t.id)) {
+      return `<div class="card" data-id="${t.id}" style="border-left-color:${projectColor(t.projectId)}">
+        <div class="line">
+          <input class="grow" value="${esc(t.text)}" data-change="editTaskText" data-id="${t.id}" />
+          <button class="mini" data-action="toggleFocus" data-id="${t.id}">${t.isWeekFocus ? '★本周重点' : '标为本周重点'}</button>
+          <button class="mini" data-action="doneEdit" data-id="${t.id}">完成</button>
+        </div>
+        <div class="meta">
+          <select data-change="editTaskStatus" data-id="${t.id}">
+            <option value="todo"${t.status === 'todo' ? ' selected' : ''}>待办</option>
+            <option value="doing"${t.status === 'doing' ? ' selected' : ''}>进行中</option>
+            <option value="done"${t.status === 'done' ? ' selected' : ''}>已完成</option>
+          </select>
+          <select data-change="editTaskProject" data-id="${t.id}">${projectOptions(t.projectId)}</select>
+          <select data-change="editTaskType" data-id="${t.id}">${workTypeOptions(t.workType)}</select>
+          <label class="muted">截止<input type="date" value="${esc(t.dueDate || '')}" data-change="editTaskDue" data-id="${t.id}" /></label>
+          <select data-change="editTaskGoal" data-id="${t.id}">${goalOptions(t.linkedGoalId)}</select>
+          <input class="tags" placeholder="标签" value="${esc((t.tags || []).join(', '))}" data-change="editTaskTags" data-id="${t.id}" />
+        </div>
+      </div>`;
+    }
+    const hasMeta = t.projectId || (t.tags && t.tags.length) || t.carryOverCount;
     return `<div class="card" data-id="${t.id}" style="border-left-color:${projectColor(t.projectId)}">
       <div class="line">
-        <input class="grow" value="${esc(t.text)}" data-change="editTaskText" data-id="${t.id}" />
-        <button class="mini" data-action="toggleFocus" data-id="${t.id}">${t.isWeekFocus ? '★本周重点' : '标为本周重点'}</button>
-        <button class="mini danger" data-action="deleteEntry" data-key="tasks" data-id="${t.id}">删除</button>
+        ${statusPill('task', t.status)}
+        <span class="grow">${esc(t.text)}</span>
+        ${dueHint(t)}
+        ${t.isWeekFocus ? '<span class="badge">本周重点</span>' : ''}
+        <span class="rowacts">
+          <button class="iconbtn" data-action="startEdit" data-id="${t.id}" title="编辑">✎</button>
+          <button class="iconbtn danger" data-action="deleteEntry" data-key="tasks" data-id="${t.id}" title="删除">🗑</button>
+        </span>
       </div>
-      <div class="meta">
-        <select data-change="editTaskStatus" data-id="${t.id}">
-          <option value="todo"${t.status === 'todo' ? ' selected' : ''}>待办</option>
-          <option value="doing"${t.status === 'doing' ? ' selected' : ''}>进行中</option>
-          <option value="done"${t.status === 'done' ? ' selected' : ''}>已完成</option>
-        </select>
-        <select data-change="editTaskProject" data-id="${t.id}">${projectOptions(t.projectId)}</select>
-        <select data-change="editTaskType" data-id="${t.id}">${workTypeOptions(t.workType)}</select>
-        <label class="muted">截止<input type="date" value="${esc(t.dueDate || '')}" data-change="editTaskDue" data-id="${t.id}" /></label>
-        <select data-change="editTaskGoal" data-id="${t.id}">${goalOptions(t.linkedGoalId)}</select>
-        <input class="tags" placeholder="标签" value="${esc((t.tags || []).join(', '))}" data-change="editTaskTags" data-id="${t.id}" />
-        ${t.carryOverCount ? `<span class="muted">结转${t.carryOverCount}次</span>` : ''}
-      </div>
+      ${hasMeta ? `<div class="meta">${projectChip(t.projectId)}${(t.tags || []).map((x) => `<span class="tag-chip">#${esc(x)}</span>`).join(' ')}${t.carryOverCount ? `<span class="muted">结转${t.carryOverCount}次</span>` : ''}</div>` : ''}
     </div>`;
   }
   function renderBacklog() {
@@ -242,6 +271,7 @@
   let planSel = null;
   let selectedDate = null;
   let planMode = 'view';
+  const editing = new Set();
   function currentPeriods() {
     const now = new Date();
     return { week: L.weekId(now), month: L.monthId(now), quarter: L.quarterId(now), half: L.halfId(now) };
@@ -458,6 +488,8 @@
     state = { ...state, settings: { ...state.settings, theme: next } };
     applyTheme(next); save();
   };
+  actions.startEdit = (el) => { editing.add(el.dataset.id); render(); };
+  actions.doneEdit = (el) => { editing.delete(el.dataset.id); render(); };
 
   let reportSel = { type: 'week', week: null, month: null };
   function renderReport() {
