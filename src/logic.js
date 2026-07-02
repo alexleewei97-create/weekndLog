@@ -226,6 +226,15 @@
     return { state: s2, task };
   }
 
+  function addProject(state, fields) {
+    const p = { id: uid('proj'), name: fields.name || '未命名项目', color: fields.color || '#3b6ef5', archived: false };
+    return { ...state, projects: [...state.projects, p] };
+  }
+  function addWorkType(state, fields) {
+    const w = { id: uid('wt'), name: fields.name || '未命名', archived: false };
+    return { ...state, workTypes: [...state.workTypes, w] };
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -240,5 +249,6 @@
     unfinishedBefore, carryOverTask, filterTasks,
     addGoal, goalsFor,
     convertIdeaToTask,
+    addProject, addWorkType,
   };
 });

@@ -146,3 +146,13 @@ test('convertIdeaToTask creates a task and marks idea converted', () => {
   assert.equal(r.state.collectionItems[0].ideaStatus, 'converted');
   assert.equal(r.state.collectionItems[0].convertedTaskId, r.task.id);
 });
+
+test('addProject and addWorkType append with defaults', () => {
+  let s = L.createEmptyState();
+  const before = s.workTypes.length;
+  s = L.addProject(s, { name: '梦幻消消乐' });
+  s = L.addWorkType(s, { name: '直播' });
+  assert.equal(s.projects[0].name, '梦幻消消乐');
+  assert.equal(s.projects[0].archived, false);
+  assert.equal(s.workTypes.length, before + 1);
+});

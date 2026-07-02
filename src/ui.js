@@ -264,6 +264,34 @@
     </section>`;
   }
 
+  function renderProjectsSettings() {
+    return `<section class="pad"><h3>项目 / 游戏</h3>
+      <div class="addrow"><input data-submit="addProject" placeholder="新增项目…（回车）" /></div>
+      ${state.projects.length ? state.projects.map((p) => `<div class="row" data-id="${p.id}">
+        <input class="grow" value="${esc(p.name)}" data-change="editProjectName" data-id="${p.id}" />
+        <input type="color" value="${p.color || '#3b6ef5'}" data-change="editProjectColor" data-id="${p.id}" />
+        <button class="mini" data-action="toggleProjectArchive" data-id="${p.id}">${p.archived ? '取消归档' : '归档'}</button>
+        <button class="mini danger" data-action="deleteEntry" data-key="projects" data-id="${p.id}">删除</button>
+      </div>`).join('') : '<p class="muted">还没有项目</p>'}
+    </section>`;
+  }
+  function renderWorkTypesSettings() {
+    return `<section class="pad"><h3>工作类型</h3>
+      <div class="addrow"><input data-submit="addWorkType" placeholder="新增工作类型…（回车）" /></div>
+      ${state.workTypes.map((w) => `<div class="row" data-id="${w.id}">
+        <input class="grow" value="${esc(w.name)}" data-change="editWorkTypeName" data-id="${w.id}" />
+        <button class="mini" data-action="toggleWorkTypeArchive" data-id="${w.id}">${w.archived ? '取消归档' : '归档'}</button>
+        <button class="mini danger" data-action="deleteEntry" data-key="workTypes" data-id="${w.id}">删除</button>
+      </div>`).join('')}
+    </section>`;
+  }
+  function renderDataSettings() { return ''; }  // Task 19 (import/export) + Task 20 (backup status)
+  function renderHelpSettings() { return ''; }   // Task 21 (manual link)
+  function renderSettings() {
+    return `<section class="pad"><h2>设置</h2></section>`
+      + renderProjectsSettings() + renderWorkTypesSettings() + renderDataSettings() + renderHelpSettings();
+  }
+
   const renderers = {
     today: () => renderTodayCapture() + renderTodayAccomplishments() + renderTodayTasks(),
     backlog: renderBacklog,
@@ -271,7 +299,7 @@
     collection: renderCollection,
     report: () => '<section class="pad"><h2>汇报</h2><p class="muted">（建设中）</p></section>',
     archive: () => '<section class="pad"><h2>档案</h2><p class="muted">（建设中）</p></section>',
-    settings: () => '<section class="pad"><h2>设置</h2><p class="muted">（建设中）</p></section>',
+    settings: renderSettings,
   };
   const actions = {};
   const afterRender = {};
@@ -362,6 +390,14 @@
   actions.editIdeaStatus = (el) => { state = L.updateEntity(state, 'collectionItems', el.dataset.id, { ideaStatus: el.value }); save(); render(); };
   actions.colType = (el) => { colFilter.type = el.value; render(); };
   actions.colQuery = (el) => { colFilter.query = el.value; render(); };
+
+  actions.addProject = (el) => { const name = el.value.trim(); if (!name) return; state = L.addProject(state, { name }); el.value = ''; save(); render(); };
+  actions.editProjectName = (el) => { state = L.updateEntity(state, 'projects', el.dataset.id, { name: el.value }); save(); };
+  actions.editProjectColor = (el) => { state = L.updateEntity(state, 'projects', el.dataset.id, { color: el.value }); save(); };
+  actions.toggleProjectArchive = (el) => { const p = state.projects.find((x) => x.id === el.dataset.id); state = L.updateEntity(state, 'projects', el.dataset.id, { archived: !p.archived }); save(); render(); };
+  actions.addWorkType = (el) => { const name = el.value.trim(); if (!name) return; state = L.addWorkType(state, { name }); el.value = ''; save(); render(); };
+  actions.editWorkTypeName = (el) => { state = L.updateEntity(state, 'workTypes', el.dataset.id, { name: el.value }); save(); };
+  actions.toggleWorkTypeArchive = (el) => { const w = state.workTypes.find((x) => x.id === el.dataset.id); state = L.updateEntity(state, 'workTypes', el.dataset.id, { archived: !w.archived }); save(); render(); };
 
   function renderTabs() {
     document.getElementById('tabs').innerHTML = TABS.map((t) =>
