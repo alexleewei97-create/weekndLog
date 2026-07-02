@@ -62,7 +62,13 @@
   function renderCaptureRow(c) {
     return `<div class="row" data-id="${c.id}">
       <span class="grow">${esc(c.text)}</span>
-      <button class="mini danger" data-action="deleteCapture" data-id="${c.id}">删除</button>
+      <span class="triage">
+        <button class="mini" data-action="triage" data-id="${c.id}" data-target="log">成果</button>
+        <button class="mini" data-action="triage" data-id="${c.id}" data-target="task">待办</button>
+        <button class="mini" data-action="triage" data-id="${c.id}" data-target="idea">灵感</button>
+        <button class="mini" data-action="triage" data-id="${c.id}" data-target="note">笔记</button>
+        <button class="mini danger" data-action="triage" data-id="${c.id}" data-target="delete">删除</button>
+      </span>
     </div>`;
   }
   function renderTodayCapture() {
@@ -101,6 +107,16 @@
     const item = state.captureItems.find((c) => c.id === el.dataset.id);
     state = L.removeEntity(state, 'captureItems', el.dataset.id);
     save(); render(); offerUndo('captureItems', item);
+  };
+  actions.triage = (el) => {
+    const id = el.dataset.id, target = el.dataset.target;
+    if (target === 'log') state = L.triageCapture(state, id, 'log', { date: L.isoDate(new Date()) });
+    else if (target === 'task') state = L.triageCapture(state, id, 'task', {});
+    else if (target === 'idea') state = L.triageCapture(state, id, 'collection', { type: 'idea' });
+    else if (target === 'note') state = L.triageCapture(state, id, 'collection', { type: 'note' });
+    else state = L.triageCapture(state, id, 'delete', {});
+    save(); render();
+    toast(target === 'delete' ? '已删除' : '已整理到' + ({ log: '成果', task: '待办', idea: '灵感', note: '笔记' }[target]));
   };
 
   function renderTabs() {

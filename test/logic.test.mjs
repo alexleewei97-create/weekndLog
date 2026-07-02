@@ -74,3 +74,28 @@ test('updateEntity patches and removeEntity removes', () => {
   s = L.removeEntity(s, 'captureItems', r.item.id);
   assert.equal(s.captureItems.length, 0);
 });
+
+test('addLogEntry / addTask / addCollection set correct defaults', () => {
+  let s = L.createEmptyState();
+  s = L.addLogEntry(s, { text: '做了A', date: '2026-07-02' });
+  assert.equal(s.logEntries[0].isHighlight, false);
+  s = L.addTask(s, { text: 'B' });
+  assert.equal(s.tasks[0].status, 'todo');
+  assert.equal(s.tasks[0].carryOverCount, 0);
+  s = L.addCollection(s, { type: 'idea', text: 'C' });
+  assert.equal(s.collectionItems[0].ideaStatus, 'raw');
+});
+
+test('triageCapture routes and removes the capture', () => {
+  let s = L.createEmptyState();
+  let r = L.addCapture(s, '做了A', '2026-07-02T09:00:00.000Z'); s = r.state;
+  s = L.triageCapture(s, r.item.id, 'log', { date: '2026-07-02', isHighlight: true });
+  assert.equal(s.captureItems.length, 0);
+  assert.equal(s.logEntries[0].isHighlight, true);
+  r = L.addCapture(s, '要做B', '2026-07-02T09:05:00.000Z'); s = r.state;
+  s = L.triageCapture(s, r.item.id, 'task', {});
+  assert.equal(s.tasks[0].text, '要做B');
+  r = L.addCapture(s, '灵感C', '2026-07-02T09:06:00.000Z'); s = r.state;
+  s = L.triageCapture(s, r.item.id, 'collection', { type: 'idea' });
+  assert.equal(s.collectionItems[0].type, 'idea');
+});

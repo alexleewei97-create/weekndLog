@@ -150,6 +150,38 @@
     return { ...state, [key]: state[key].filter((x) => x.id !== id) };
   }
 
+  function addLogEntry(state, fields) {
+    const e = { id: uid('log'), date: fields.date || isoDate(new Date()), text: fields.text || '',
+      projectId: fields.projectId || null, workType: fields.workType || null, tags: fields.tags || [],
+      isHighlight: !!fields.isHighlight, createdAt: fields.createdAt || new Date().toISOString() };
+    return { ...state, logEntries: [...state.logEntries, e] };
+  }
+  function addTask(state, fields) {
+    const t = { id: uid('task'), text: fields.text || '', projectId: fields.projectId || null,
+      workType: fields.workType || null, tags: fields.tags || [], status: fields.status || 'todo',
+      isWeekFocus: !!fields.isWeekFocus, linkedGoalId: fields.linkedGoalId || null,
+      dueDate: fields.dueDate || null, createdAt: fields.createdAt || new Date().toISOString(),
+      completedAt: null, carryOverCount: 0 };
+    return { ...state, tasks: [...state.tasks, t] };
+  }
+  function addCollection(state, fields) {
+    const isIdea = fields.type === 'idea';
+    const c = { id: uid('col'), type: isIdea ? 'idea' : 'note', text: fields.text || '',
+      projectId: fields.projectId || null, tags: fields.tags || [],
+      ideaStatus: isIdea ? (fields.ideaStatus || 'raw') : null, convertedTaskId: null,
+      createdAt: fields.createdAt || new Date().toISOString() };
+    return { ...state, collectionItems: [...state.collectionItems, c] };
+  }
+  function triageCapture(state, captureId, target, payload) {
+    const cap = state.captureItems.find((c) => c.id === captureId);
+    if (!cap) return state;
+    let s = state;
+    if (target === 'log') s = addLogEntry(s, { text: cap.text, ...payload });
+    else if (target === 'task') s = addTask(s, { text: cap.text, ...payload });
+    else if (target === 'collection') s = addCollection(s, { text: cap.text, ...payload });
+    return removeEntity(s, 'captureItems', captureId);
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -160,5 +192,6 @@
     isoDate, parseDate, weekId, monthId, quarterId, halfId,
     periodRange, periodLabel, shiftPeriod, dateInPeriod,
     addCapture, updateEntity, removeEntity,
+    addLogEntry, addTask, addCollection, triageCapture,
   };
 });
