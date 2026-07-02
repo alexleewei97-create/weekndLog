@@ -305,7 +305,11 @@
         <input type="number" min="1" value="${state.settings.backupRetention || 30}" data-change="editRetention" style="width:70px" /></label>
     </section>`;
   }
-  function renderHelpSettings() { return ''; }   // Task 21 (manual link)
+  function renderHelpSettings() {
+    return `<section class="pad"><h3>帮助</h3>
+      <p><a href="使用手册.html" target="_blank" rel="noopener">📖 打开《威肯Log 使用手册》</a></p>
+    </section>`;
+  }
   function renderSettings() {
     return `<section class="pad"><h2>设置</h2></section>`
       + renderProjectsSettings() + renderWorkTypesSettings() + renderDataSettings() + renderHelpSettings();
