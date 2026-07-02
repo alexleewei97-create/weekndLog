@@ -99,3 +99,20 @@ test('triageCapture routes and removes the capture', () => {
   s = L.triageCapture(s, r.item.id, 'collection', { type: 'idea' });
   assert.equal(s.collectionItems[0].type, 'idea');
 });
+
+test('unfinishedBefore finds overdue undone tasks only', () => {
+  let s = L.createEmptyState();
+  s = L.addTask(s, { text: '昨天的', dueDate: '2026-07-01' });
+  s = L.addTask(s, { text: '今天的', dueDate: '2026-07-02' });
+  s = L.addTask(s, { text: '已完成的', dueDate: '2026-07-01', status: 'done' });
+  assert.deepEqual(L.unfinishedBefore(s, '2026-07-02').map((t) => t.text), ['昨天的']);
+});
+
+test('carryOverTask sets dueDate and increments carryOverCount', () => {
+  let s = L.createEmptyState();
+  s = L.addTask(s, { text: 'x', dueDate: '2026-07-01' });
+  const id = s.tasks[0].id;
+  s = L.carryOverTask(s, id, '2026-07-02');
+  assert.equal(s.tasks[0].dueDate, '2026-07-02');
+  assert.equal(s.tasks[0].carryOverCount, 1);
+});

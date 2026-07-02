@@ -182,6 +182,18 @@
     return removeEntity(s, 'captureItems', captureId);
   }
 
+  function unfinishedBefore(state, dateStr) {
+    return state.tasks.filter((t) => {
+      if (t.status === 'done') return false;
+      const ref = t.dueDate || (t.createdAt ? t.createdAt.slice(0, 10) : dateStr);
+      return ref < dateStr;
+    });
+  }
+  function carryOverTask(state, taskId, toDate) {
+    return { ...state, tasks: state.tasks.map((t) => (t.id === taskId
+      ? { ...t, dueDate: toDate, carryOverCount: (t.carryOverCount || 0) + 1 } : t)) };
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -193,5 +205,6 @@
     periodRange, periodLabel, shiftPeriod, dateInPeriod,
     addCapture, updateEntity, removeEntity,
     addLogEntry, addTask, addCollection, triageCapture,
+    unfinishedBefore, carryOverTask,
   };
 });

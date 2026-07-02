@@ -105,7 +105,24 @@
       ${items.length ? items.map(renderAccRow).join('') : '<p class="muted">今天还没有成果记录</p>'}
     </section>`;
   }
-  function renderTodayTasks() { return '<section class="pad"><h3>今日待办</h3><p class="muted">（Task 11）</p></section>'; }
+  function renderTodayTasks() {
+    const today = L.isoDate(new Date());
+    const todays = state.tasks.filter((t) => t.status !== 'done' && (t.dueDate === today || t.isWeekFocus));
+    const overdue = L.unfinishedBefore(state, today);
+    const overdueHtml = overdue.length ? `<div class="notice">
+      昨日及更早未完成 <b>${overdue.length}</b> 项
+      <button class="mini" data-action="carryAll">全部带入今天</button>
+      ${overdue.map((t) => `<div class="row" data-id="${t.id}">
+        <span class="grow">${esc(t.text)}${t.carryOverCount ? ` <span class="muted">·结转${t.carryOverCount}次</span>` : ''}</span>
+        <button class="mini" data-action="carryOne" data-id="${t.id}">带入</button>
+      </div>`).join('')}</div>` : '';
+    const tasksHtml = todays.length ? todays.map((t) => `<div class="row" data-id="${t.id}">
+      <input type="checkbox" data-action="completeTask" data-id="${t.id}" />
+      <span class="grow">${esc(t.text)}</span>
+      ${t.isWeekFocus ? '<span class="badge">本周重点</span>' : ''}
+    </div>`).join('') : '<p class="muted">今天没有安排任务，可到"待办"设置截止日或标为本周重点</p>';
+    return `<section class="pad">${overdueHtml}<h3>今日待办 <span class="muted">${todays.length}</span></h3>${tasksHtml}</section>`;
+  }
 
   const renderers = {
     today: () => renderTodayCapture() + renderTodayAccomplishments() + renderTodayTasks(),
@@ -161,6 +178,17 @@
     const key = el.dataset.key, id = el.dataset.id;
     const item = state[key].find((x) => x.id === id);
     state = L.removeEntity(state, key, id); save(); render(); offerUndo(key, item);
+  };
+
+  actions.carryOne = (el) => { state = L.carryOverTask(state, el.dataset.id, L.isoDate(new Date())); save(); render(); };
+  actions.carryAll = () => {
+    const today = L.isoDate(new Date());
+    for (const t of L.unfinishedBefore(state, today)) state = L.carryOverTask(state, t.id, today);
+    save(); render(); toast('已全部带入今天');
+  };
+  actions.completeTask = (el) => {
+    state = L.updateEntity(state, 'tasks', el.dataset.id, { status: 'done', completedAt: new Date().toISOString() });
+    save(); render(); toast('已完成 🎉');
   };
 
   function renderTabs() {
