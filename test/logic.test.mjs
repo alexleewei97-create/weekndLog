@@ -211,3 +211,28 @@ test('shiftDate moves by days across month and year boundaries', () => {
   assert.equal(L.shiftDate('2026-07-02', 7), '2026-07-09');
   assert.equal(L.shiftDate('2026-07-02', 0), '2026-07-02');
 });
+
+test('tasksForDay: due-range lookahead, week-focus on today, excludes done/past', () => {
+  let s = L.createEmptyState();
+  s = L.addTask(s, { text: '三天后到期', dueDate: '2026-07-05' });
+  s = L.addTask(s, { text: '今天到期', dueDate: '2026-07-02' });
+  s = L.addTask(s, { text: '本周重点无截止', isWeekFocus: true });
+  s = L.addTask(s, { text: '已完成', dueDate: '2026-07-05', status: 'done' });
+  const today = '2026-07-02';
+  assert.deepEqual(L.tasksForDay(s, '2026-07-02', today).map((t) => t.text).sort(),
+    ['三天后到期', '今天到期', '本周重点无截止'].sort());
+  assert.deepEqual(L.tasksForDay(s, '2026-07-04', today).map((t) => t.text), ['三天后到期']);
+  assert.deepEqual(L.tasksForDay(s, '2026-07-06', today).map((t) => t.text), []);
+  assert.deepEqual(L.tasksForDay(s, '2026-07-01', today).map((t) => t.text), []);
+});
+
+test('archiveDays: chronological order, month-start flags, query filter', () => {
+  let s = L.createEmptyState();
+  s = L.addLogEntry(s, { text: '六月事', date: '2026-06-20' });
+  s = L.addLogEntry(s, { text: '七月早', date: '2026-07-02' });
+  s = L.addLogEntry(s, { text: '七月晚', date: '2026-07-10' });
+  const days = L.archiveDays(s, {});
+  assert.deepEqual(days.map((d) => d.date), ['2026-06-20', '2026-07-02', '2026-07-10']);
+  assert.deepEqual(days.map((d) => d.isMonthStart), [true, true, false]);
+  assert.deepEqual(L.archiveDays(s, { query: '七月晚' }).map((d) => d.date), ['2026-07-10']);
+});

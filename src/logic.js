@@ -337,6 +337,30 @@
     return isoDate(d);
   }
 
+  function tasksForDay(state, dateStr, todayStr) {
+    return state.tasks.filter((t) => {
+      if (t.status === 'done') return false;
+      if (t.dueDate && dateStr >= todayStr && dateStr <= t.dueDate) return true;
+      if (dateStr === todayStr && t.isWeekFocus) return true;
+      return false;
+    });
+  }
+
+  function archiveDays(state, opts) {
+    const tl = buildTimeline(state, opts || {});
+    const days = [];
+    for (const m of [...tl.months].reverse()) {
+      for (const w of [...m.weeks].reverse()) {
+        for (const d of [...w.days].reverse()) {
+          days.push({ ...d, monthId: m.monthId, monthLabel: m.label });
+        }
+      }
+    }
+    let last = null;
+    for (const d of days) { d.isMonthStart = d.monthId !== last; last = d.monthId; }
+    return days;
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -355,5 +379,6 @@
     generateReport,
     buildTimeline,
     validateState,
+    tasksForDay, archiveDays,
   };
 });
