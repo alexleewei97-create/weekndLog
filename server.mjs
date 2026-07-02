@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import net from 'node:net';
@@ -20,6 +20,28 @@ export function resolvePaths(rootDir) {
     backupsDir: path.join(rootDir, 'backups'),
     staticRoot: rootDir,
   };
+}
+
+export async function readJSON(filePath, fallbackObj) {
+  try { return JSON.parse(await readFile(filePath, 'utf8')); }
+  catch { return fallbackObj; }
+}
+
+export async function atomicWriteJSON(filePath, tmpPath, obj) {
+  await writeFile(tmpPath, JSON.stringify(obj, null, 2), 'utf8');
+  await rename(tmpPath, filePath);
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (c) => {
+      data += c;
+      if (data.length > 20 * 1024 * 1024) reject(new Error('payload too large'));
+    });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
 }
 
 export function findOpenPort(startPort) {
@@ -62,7 +84,28 @@ export function createRequestHandler({ rootDir, retention = 30 }) {
       res.end(JSON.stringify({ ok: true, app: '威肯Log' }));
       return;
     }
-    // /api/data is added in Task 4.
+    if (url.pathname === '/api/data') {
+      if (req.method === 'GET') {
+        const data = await readJSON(paths.dataFile, null);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(data));
+        return;
+      }
+      if (req.method === 'POST') {
+        try {
+          const obj = JSON.parse(await readBody(req));
+          await mkdir(paths.backupsDir, { recursive: true });
+          await atomicWriteJSON(paths.dataFile, paths.tmpFile, obj);
+          // Snapshot + prune are added in Task 5.
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ ok: false, error: String((e && e.message) || e) }));
+        }
+        return;
+      }
+    }
     await serveStatic(req, res, paths.staticRoot);
   };
 }
