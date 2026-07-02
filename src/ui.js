@@ -271,11 +271,23 @@
 
   let planSel = null;
   let selectedDate = null;
-  let planMode = 'view';
   const editing = new Set();
   function currentPeriods() {
     const now = new Date();
     return { week: L.weekId(now), month: L.monthId(now), quarter: L.quarterId(now), half: L.halfId(now) };
+  }
+  function renderGoalReadCard(g) {
+    return `<div class="card" data-id="${g.id}" style="border-left-color:${projectColor(g.projectId)}">
+      <div class="line">
+        <span class="grow"><b>${esc(g.title || '（未命名目标）')}</b></span>
+        ${statusPill('goal', g.status)}
+        <span class="rowacts">
+          <button class="iconbtn" data-action="startEdit" data-id="${g.id}" title="编辑">✎</button>
+          <button class="iconbtn danger" data-action="deleteEntry" data-key="goals" data-id="${g.id}" title="删除">🗑</button>
+        </span>
+      </div>
+      ${(g.projectId || g.progressNote) ? `<div class="meta">${projectChip(g.projectId)}${g.progressNote ? `<span class="muted">${esc(g.progressNote)}</span>` : ''}</div>` : ''}
+    </div>`;
   }
   function renderGoalRow(g) {
     return `<div class="card" data-id="${g.id}" style="border-left-color:${projectColor(g.projectId)}">
@@ -287,23 +299,11 @@
           <option value="done"${g.status === 'done' ? ' selected' : ''}>已完成</option>
           <option value="dropped"${g.status === 'dropped' ? ' selected' : ''}>已放弃</option>
         </select>
-        <button class="mini danger" data-action="deleteEntry" data-key="goals" data-id="${g.id}">删除</button>
+        <button class="mini" data-action="doneEdit" data-id="${g.id}">完成</button>
       </div>
       <div class="meta">
         <select data-change="editGoalProject" data-id="${g.id}">${projectOptions(g.projectId)}</select>
         <input class="grow" placeholder="进展备注（汇报用）" value="${esc(g.progressNote)}" data-change="editGoalNote" data-id="${g.id}" />
-      </div>
-    </div>`;
-  }
-  function renderGoalReadCard(g) {
-    return `<div class="card" style="border-left-color:${projectColor(g.projectId)}">
-      <div class="line">
-        <span class="grow"><b>${esc(g.title || '（未命名目标）')}</b></span>
-        ${statusPill('goal', g.status)}
-      </div>
-      <div class="meta">
-        ${projectChip(g.projectId)}
-        ${g.progressNote ? `<span class="muted">${esc(g.progressNote)}</span>` : ''}
       </div>
     </div>`;
   }
@@ -315,38 +315,16 @@
       <div class="filters"><span class="muted">${esc(L.periodLabel(h, pid))}</span>
         <button class="mini" data-action="planPrev" data-h="${h}">←</button>
         <button class="mini" data-action="planNext" data-h="${h}">→</button></div>
-      ${goals.length ? goals.map(renderGoalReadCard).join('')
-        : `${emptyState('本周期还没有规划', '🎯')}<div class="addrow"><button class="mini" data-action="planGotoEdit" data-h="${h}">＋ 去添加</button></div>`}
-    </section>`;
-  }
-  function planSeg() {
-    return `<div class="seg">
-      <button class="${planMode === 'view' ? 'on' : ''}" data-action="planMode" data-mode="view">查看</button>
-      <button class="${planMode === 'edit' ? 'on' : ''}" data-action="planMode" data-mode="edit">编辑</button>
-    </div>`;
-  }
-  function renderHorizon(h, label) {
-    const pid = planSel[h];
-    const goals = L.goalsFor(state, h, pid);
-    return `<section class="pad">
-      ${sectionTitle(label, goals.length)}
-      <div class="filters"><span class="muted">${esc(L.periodLabel(h, pid))}</span>
-        <button class="mini" data-action="planPrev" data-h="${h}">←</button>
-        <button class="mini" data-action="planNext" data-h="${h}">→</button></div>
       <div class="addrow"><input data-submit="addGoal" data-h="${h}" placeholder="新增${esc(label)}目标…（回车）" /></div>
-      ${goals.length ? goals.map(renderGoalRow).join('') : emptyState('暂无目标', '🎯')}
+      ${goals.length ? goals.map((g) => editing.has(g.id) ? renderGoalRow(g) : renderGoalReadCard(g)).join('') : emptyState('本周期还没有规划', '🎯')}
     </section>`;
   }
   function renderPlanning() {
     if (!planSel) planSel = currentPeriods();
     const horizons = [['week', '本周重点'], ['month', '月度'], ['quarter', '季度'], ['half', '半年度']];
     const head = `<section class="pad"><h2>规划</h2>
-      <p class="subtitle">四个层级的目标一屏概览；日常待办可在"待办"里关联到这些目标。</p>
-      ${planSeg()}</section>`;
-    const body = planMode === 'view'
-      ? horizons.map(([h, label]) => renderHorizonView(h, label)).join('')
-      : horizons.map(([h, label]) => renderHorizon(h, label)).join('');
-    return head + body;
+      <p class="subtitle">四个层级的目标一屏概览；点每条的 ✎ 编辑，日常待办可在"待办"里关联到这些目标。</p></section>`;
+    return head + horizons.map(([h, label]) => renderHorizonView(h, label)).join('');
   }
 
   let colFilter = { type: '', query: '' };
@@ -659,12 +637,6 @@
 
   actions.planPrev = (el) => { const h = el.dataset.h; planSel[h] = L.shiftPeriod(h, planSel[h], -1); render(); };
   actions.planNext = (el) => { const h = el.dataset.h; planSel[h] = L.shiftPeriod(h, planSel[h], 1); render(); };
-  actions.planMode = (el) => { planMode = el.dataset.mode === 'edit' ? 'edit' : 'view'; render(); };
-  actions.planGotoEdit = (el) => {
-    planMode = 'edit'; render();
-    const inp = document.querySelector(`[data-submit="addGoal"][data-h="${el.dataset.h}"]`);
-    if (inp) inp.focus();
-  };
   actions.addGoal = (el) => { const title = el.value.trim(); if (!title) return; const h = el.dataset.h; state = L.addGoal(state, { horizon: h, period: planSel[h], title }); el.value = ''; save(); render(); };
   actions.editGoalTitle = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { title: el.value }); save(); };
   actions.editGoalStatus = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { status: el.value }); save(); render(); };
