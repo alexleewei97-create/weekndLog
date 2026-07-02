@@ -331,6 +331,12 @@
     return { ok: true, errors: [], state: obj };
   }
 
+  function shiftDate(isoStr, deltaDays) {
+    const d = parseDate(isoStr);
+    d.setDate(d.getDate() + deltaDays);
+    return isoDate(d);
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -339,7 +345,7 @@
     uid,
     createEmptyState,
     isoDate, parseDate, weekId, monthId, quarterId, halfId,
-    periodRange, periodLabel, shiftPeriod, dateInPeriod,
+    periodRange, periodLabel, shiftPeriod, dateInPeriod, shiftDate,
     addCapture, updateEntity, removeEntity,
     addLogEntry, addTask, addCollection, triageCapture,
     unfinishedBefore, carryOverTask, filterTasks,

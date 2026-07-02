@@ -202,3 +202,12 @@ test('validateState rejects malformed and accepts valid', () => {
   assert.equal(res.ok, true);
   assert.equal(res.state, good);
 });
+
+test('shiftDate moves by days across month and year boundaries', () => {
+  assert.equal(L.shiftDate('2026-07-02', -1), '2026-07-01');
+  assert.equal(L.shiftDate('2026-07-02', 1), '2026-07-03');
+  assert.equal(L.shiftDate('2026-03-01', -1), '2026-02-28'); // 2026 non-leap
+  assert.equal(L.shiftDate('2026-01-01', -1), '2025-12-31'); // year boundary
+  assert.equal(L.shiftDate('2026-07-02', 7), '2026-07-09');
+  assert.equal(L.shiftDate('2026-07-02', 0), '2026-07-02');
+});
