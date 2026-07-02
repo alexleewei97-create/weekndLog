@@ -51,6 +51,31 @@
   }
   function parseTags(str) { return String(str || '').split(/[,，]/).map((s) => s.trim()).filter(Boolean); }
 
+  function projectColor(id) {
+    const p = state.projects.find((x) => x.id === id);
+    const c = p && p.color;
+    return (typeof c === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(c)) ? c : 'var(--border-strong)';
+  }
+  function projectChip(id) {
+    const p = state.projects.find((x) => x.id === id);
+    if (!p) return '';
+    return `<span class="chip"><span class="dot" style="background:${projectColor(id)}"></span>${esc(p.name)}</span>`;
+  }
+  const STATUS_PILL = {
+    task: { todo: ['muted', '待办'], doing: ['doing', '进行中'], done: ['ok', '已完成'] },
+    goal: { planned: ['muted', '计划中'], inProgress: ['doing', '进行中'], done: ['ok', '已完成'], dropped: ['muted', '已放弃'] },
+  };
+  function statusPill(kind, value) {
+    const m = (STATUS_PILL[kind] || {})[value]; if (!m) return '';
+    return `<span class="pill pill--${m[0]}">${m[1]}</span>`;
+  }
+  function emptyState(text, ico) {
+    return `<div class="empty">${ico ? `<span class="ico">${esc(ico)}</span>` : ''}${esc(text)}</div>`;
+  }
+  function sectionTitle(text, count) {
+    return `<div class="section-title"><h3>${esc(text)}</h3>${count != null ? `<span class="count">${count}</span>` : ''}</div>`;
+  }
+
   function save() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
@@ -91,7 +116,7 @@
     </section>`;
   }
   function renderAccRow(e) {
-    return `<div class="card" data-id="${e.id}">
+    return `<div class="card" data-id="${e.id}" style="border-left-color:${projectColor(e.projectId)}">
       <div class="line">
         <button class="star${e.isHighlight ? ' on' : ''}" data-action="toggleHighlight" data-id="${e.id}" title="标为亮点">★</button>
         <input class="grow" value="${esc(e.text)}" data-change="editAccText" data-id="${e.id}" />
@@ -140,7 +165,7 @@
     ).join('');
   }
   function renderTaskRow(t) {
-    return `<div class="card" data-id="${t.id}">
+    return `<div class="card" data-id="${t.id}" style="border-left-color:${projectColor(t.projectId)}">
       <div class="line">
         <input class="grow" value="${esc(t.text)}" data-change="editTaskText" data-id="${t.id}" />
         <button class="mini" data-action="toggleFocus" data-id="${t.id}">${t.isWeekFocus ? '★本周重点' : '标为本周重点'}</button>
@@ -179,7 +204,7 @@
         <label><input type="checkbox" data-change="filterFocus"${backlogFilter.weekFocus ? ' checked' : ''} /> 仅本周重点</label>
         <input placeholder="搜索（回车）" value="${esc(backlogFilter.query)}" data-change="filterQuery" />
       </div>
-      ${list.length ? list.map(renderTaskRow).join('') : '<p class="muted">没有匹配的待办</p>'}
+      ${list.length ? list.map(renderTaskRow).join('') : emptyState('没有匹配的待办', '📋')}
     </section>`;
   }
 
@@ -189,7 +214,7 @@
     return { week: L.weekId(now), month: L.monthId(now), quarter: L.quarterId(now), half: L.halfId(now) };
   }
   function renderGoalRow(g) {
-    return `<div class="card" data-id="${g.id}">
+    return `<div class="card" data-id="${g.id}" style="border-left-color:${projectColor(g.projectId)}">
       <div class="line">
         <input class="grow" value="${esc(g.title)}" data-change="editGoalTitle" data-id="${g.id}" />
         <select data-change="editGoalStatus" data-id="${g.id}">
@@ -227,7 +252,7 @@
   let colFilter = { type: '', query: '' };
   function renderColRow(c) {
     const isIdea = c.type === 'idea';
-    return `<div class="card" data-id="${c.id}">
+    return `<div class="card" data-id="${c.id}" style="border-left-color:${projectColor(c.projectId)}">
       <div class="line">
         <span class="badge">${isIdea ? '灵感' : '笔记'}</span>
         <input class="grow" value="${esc(c.text)}" data-change="editColText" data-id="${c.id}" />
@@ -268,23 +293,23 @@
         </select>
         <input placeholder="搜索（回车）" value="${esc(colFilter.query)}" data-change="colQuery" />
       </div>
-      ${list.length ? list.map(renderColRow).join('') : '<p class="muted">还没有收集条目</p>'}
+      ${list.length ? list.map(renderColRow).join('') : emptyState('还没有收集条目', '💡')}
     </section>`;
   }
 
   function renderProjectsSettings() {
-    return `<section class="pad"><h3>项目 / 游戏</h3>
+    return `<section class="pad">${sectionTitle('项目 / 游戏')}
       <div class="addrow"><input data-submit="addProject" placeholder="新增项目…（回车）" /></div>
       ${state.projects.length ? state.projects.map((p) => `<div class="row" data-id="${p.id}">
         <input class="grow" value="${esc(p.name)}" data-change="editProjectName" data-id="${p.id}" />
         <input type="color" value="${esc(p.color || '#3b6ef5')}" data-change="editProjectColor" data-id="${p.id}" />
         <button class="mini" data-action="toggleProjectArchive" data-id="${p.id}">${p.archived ? '取消归档' : '归档'}</button>
         <button class="mini danger" data-action="deleteEntry" data-key="projects" data-id="${p.id}">删除</button>
-      </div>`).join('') : '<p class="muted">还没有项目</p>'}
+      </div>`).join('') : emptyState('还没有项目', '🎮')}
     </section>`;
   }
   function renderWorkTypesSettings() {
-    return `<section class="pad"><h3>工作类型</h3>
+    return `<section class="pad">${sectionTitle('工作类型')}
       <div class="addrow"><input data-submit="addWorkType" placeholder="新增工作类型…（回车）" /></div>
       ${state.workTypes.map((w) => `<div class="row" data-id="${w.id}">
         <input class="grow" value="${esc(w.name)}" data-change="editWorkTypeName" data-id="${w.id}" />
@@ -302,7 +327,7 @@
   }
 
   function renderDataSettings() {
-    return `<section class="pad"><h3>数据备份</h3>
+    return `<section class="pad">${sectionTitle('数据备份')}
       ${renderBackupStatus()}
       <div class="addrow">
         <button class="mini" data-action="exportData">导出 JSON 备份</button>
@@ -314,7 +339,7 @@
     </section>`;
   }
   function renderHelpSettings() {
-    return `<section class="pad"><h3>帮助</h3>
+    return `<section class="pad">${sectionTitle('帮助')}
       <p><a href="使用手册.html" target="_blank" rel="noopener">📖 打开《威肯Log 使用手册》</a></p>
     </section>`;
   }
