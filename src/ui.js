@@ -467,26 +467,34 @@
   const afterRender = {};
 
   let archiveQuery = '';
-  function renderTlDay(d) {
+  function archTag(kind) {
+    const m = { result: ['result', '成果'], done: ['done', '完成'], note: ['note', '笔记'], idea: ['idea', '灵感'] }[kind];
+    return `<span class="tag tag--${m[0]}">${m[1]}</span>`;
+  }
+  function renderArchRow(kind, text, highlight) {
+    return `<div class="arch-row">${archTag(kind)}<span class="grow">${highlight ? '⭐ ' : ''}${esc(text)}</span></div>`;
+  }
+  function renderArchDay(d) {
     const wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][L.parseDate(d.date).getDay()];
     const rows = [];
-    for (const e of d.entries) rows.push(`<div class="row"><span class="badge">成果</span><span class="grow">${e.isHighlight ? '⭐ ' : ''}${esc(e.text)}</span></div>`);
-    for (const t of d.tasksDone) rows.push(`<div class="row"><span class="badge">完成</span><span class="grow">${esc(t.text)}</span></div>`);
-    for (const c of d.collection) rows.push(`<div class="row"><span class="badge">${c.type === 'idea' ? '灵感' : '笔记'}</span><span class="grow">${esc(c.text)}</span></div>`);
-    return `<div class="tl-day"><div class="tl-dayhead">${esc(d.date)} <span class="muted">${wd}</span></div>${rows.join('') || '<p class="muted">—</p>'}</div>`;
+    for (const e of d.entries) rows.push(renderArchRow('result', e.text, e.isHighlight));
+    for (const t of d.tasksDone) rows.push(renderArchRow('done', t.text, false));
+    for (const c of d.collection) rows.push(renderArchRow(c.type === 'idea' ? 'idea' : 'note', c.text, false));
+    return `<div class="arch-day"><div class="arch-dayhead">${esc(d.date)} <span class="muted">${wd}</span></div>${rows.join('')}</div>`;
   }
   function renderArchive() {
-    const days = L.archiveDays(state, { query: archiveQuery });
-    const cols = [];
+    const days = L.archiveDays(state, { query: archiveQuery }).reverse(); // newest first
+    const parts = [];
+    let curMonth = null;
     for (const d of days) {
-      if (d.isMonthStart) cols.push(`<div class="tl-month">${esc(d.monthLabel)}</div>`);
-      cols.push(renderTlDay(d));
+      if (d.monthId !== curMonth) { parts.push(`<div class="arch-month">${esc(d.monthLabel)}</div>`); curMonth = d.monthId; }
+      parts.push(renderArchDay(d));
     }
     return `<section class="pad">
       <h2>档案 · 个人编年史</h2>
-      <p class="subtitle">按住左右拖动、或用滚轮横向浏览；默认停在最近。</p>
+      <p class="subtitle">按月、按天回看你的记录；最新的在最上面。</p>
       <div class="filters"><input class="grow" placeholder="全文搜索所有记录（回车）" value="${esc(archiveQuery)}" data-change="archiveSearch" /></div>
-      ${days.length ? `<div id="timeline" class="timeline">${cols.join('')}</div>` : emptyState('还没有可回溯的记录', '📚')}
+      ${days.length ? parts.join('') : emptyState('还没有可回溯的记录', '📚')}
     </section>`;
   }
   renderers.archive = renderArchive;
@@ -555,16 +563,6 @@
   actions.tplPlan = (el) => setHeading('plan', el.value);
 
   afterRender.today = () => { const i = document.getElementById('capture-input'); if (i) i.focus(); };
-  afterRender.archive = () => {
-    const tl = document.getElementById('timeline');
-    if (!tl) return;
-    tl.scrollLeft = tl.scrollWidth; // park at most recent (right)
-    let down = false, startX = 0, startL = 0;
-    tl.addEventListener('pointerdown', (e) => { down = true; startX = e.clientX; startL = tl.scrollLeft; tl.setPointerCapture(e.pointerId); tl.classList.add('dragging'); });
-    tl.addEventListener('pointermove', (e) => { if (!down) return; tl.scrollLeft = startL - (e.clientX - startX); });
-    tl.addEventListener('pointerup', (e) => { down = false; try { tl.releasePointerCapture(e.pointerId); } catch (x) {} tl.classList.remove('dragging'); });
-    tl.addEventListener('wheel', (e) => { if (e.deltaY) { e.preventDefault(); tl.scrollLeft += e.deltaY; } }, { passive: false });
-  };
 
   actions.addCapture = (el) => {
     const text = el.value.trim(); if (!text) return;

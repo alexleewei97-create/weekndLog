@@ -130,16 +130,18 @@ details.fold[open] > summary::before { content: "▾ "; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 #toast .link { color: #9ec1ff; }
 
-.timeline { display: flex; gap: 10px; overflow-x: auto; padding: 8px 2px 14px; cursor: grab; }
-.timeline.dragging { cursor: grabbing; user-select: none; }
-.tl-day { flex: 0 0 210px; background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 10px; max-height: 62vh; overflow-y: auto; }
-.tl-dayhead { font-weight: 600; font-size: 13px; margin-bottom: 8px; position: sticky; top: 0;
-  background: var(--surface-2); padding-bottom: 4px; }
-.tl-day .row { border-bottom: 1px dashed var(--border); align-items: flex-start; }
-.tl-day .row:last-child { border-bottom: 0; }
-.tl-month { flex: 0 0 auto; align-self: stretch; display: flex; align-items: center;
-  writing-mode: vertical-rl; font-weight: 700; color: var(--brand-ink); letter-spacing: 3px; padding: 0 2px; }
+/* archive vertical reading flow */
+.arch-month { font-weight: 700; color: var(--brand-ink); font-size: 15px; margin: 20px 0 8px;
+  padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.arch-month:first-of-type { margin-top: 6px; }
+.arch-day { border-left: 2px solid var(--border); padding: 2px 0 6px 14px; margin: 0 0 12px; }
+.arch-dayhead { font-weight: 600; font-size: 13px; margin: 2px 0 6px; }
+.arch-row { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; line-height: 1.5; }
+.tag { flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; margin-top: 2px; }
+.tag--result { background: var(--brand-weak); color: var(--brand-ink); }
+.tag--done { background: var(--ok-bg); color: var(--ok); }
+.tag--note { background: var(--surface-2); color: var(--ink-2); }
+.tag--idea { background: var(--warn-bg); color: var(--warn); }
 
 .rowacts { display: inline-flex; gap: 2px; margin-left: auto; }
 .iconbtn { border: 0; background: transparent; color: var(--muted); font-size: 14px;
