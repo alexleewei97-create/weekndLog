@@ -285,7 +285,13 @@
       </div>`).join('')}
     </section>`;
   }
-  function renderBackupStatus() { return ''; }  // filled by Task 20
+  function renderBackupStatus() {
+    if (Store.mode === 'server') {
+      return `<p class="muted">✅ 自动保存已开启（本地助手模式）：改动即写入 <b>weikenlog-data.json</b>，并每日快照到 <b>backups/</b>。把整个 威肯Log 文件夹放进 OneDrive 即获得自动云备份。</p>`;
+    }
+    const last = state.settings.lastBackupAt ? state.settings.lastBackupAt.slice(0, 10) : '从未';
+    return `<p class="muted">⚠ 纯文件模式：数据仅存于本浏览器 localStorage，<b>不会自动备份</b>。上次导出：${last}。建议定期点上面的"导出 JSON 备份"，或改用 威肯Log.cmd 启动以开启自动备份。</p>`;
+  }
 
   function renderDataSettings() {
     return `<section class="pad"><h3>数据备份</h3>
@@ -545,6 +551,16 @@
     if (el && actions[el.dataset.change]) actions[el.dataset.change](el, e);
   }
 
+  function maybeRemindBackup() {
+    if (Store.mode !== 'local') return;
+    const hasData = state.logEntries.length || state.tasks.length || state.collectionItems.length;
+    if (!hasData) return;
+    const d = Store.overdueDays(state);
+    if (d === null || d >= 7) {
+      toastAction('提醒：数据已多日未备份', '去导出', () => { activeTab = 'settings'; render(); });
+    }
+  }
+
   async function boot() {
     await Store.init();
     state = await Store.load();
@@ -554,6 +570,8 @@
     document.addEventListener('change', onChange);
     renderBanner();
     render();
+    if (Store.lastError) toast(Store.lastError);
+    maybeRemindBackup();
   }
 
   // Expose shared helpers to later same-file tasks via closure (they edit this file directly).
