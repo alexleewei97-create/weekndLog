@@ -40,6 +40,105 @@
     };
   }
 
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function isoDate(date) {
+    date = date || new Date();
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  }
+
+  function parseDate(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function weekId(date) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = (d.getDay() + 6) % 7;      // Mon=0..Sun=6
+    d.setDate(d.getDate() - day + 3);       // Thursday of this ISO week
+    const isoYear = d.getFullYear();
+    const jan4 = new Date(isoYear, 0, 4);
+    const jan4day = (jan4.getDay() + 6) % 7;
+    const week1Thursday = new Date(isoYear, 0, 4 - jan4day + 3);
+    const week = 1 + Math.round((d - week1Thursday) / 604800000);
+    return `${isoYear}-W${pad2(week)}`;
+  }
+
+  function isoWeekStart(isoYear, week) {
+    const jan4 = new Date(isoYear, 0, 4);
+    const jan4day = (jan4.getDay() + 6) % 7;
+    const monday = new Date(isoYear, 0, 4 - jan4day);
+    monday.setDate(monday.getDate() + (week - 1) * 7);
+    return monday;
+  }
+
+  function monthId(date) { return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`; }
+  function quarterId(date) { return `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`; }
+  function halfId(date) { return `${date.getFullYear()}-H${date.getMonth() < 6 ? 1 : 2}`; }
+
+  function periodRange(horizon, periodId) {
+    if (horizon === 'week') {
+      const [y, w] = periodId.split('-W').map(Number);
+      const start = isoWeekStart(y, w);
+      const end = new Date(start); end.setDate(start.getDate() + 6);
+      return { start: isoDate(start), end: isoDate(end) };
+    }
+    if (horizon === 'month') {
+      const [y, m] = periodId.split('-').map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0);
+      return { start: isoDate(start), end: isoDate(end) };
+    }
+    if (horizon === 'quarter') {
+      const [y, q] = periodId.split('-Q').map(Number);
+      const sm = (q - 1) * 3;
+      return { start: isoDate(new Date(y, sm, 1)), end: isoDate(new Date(y, sm + 3, 0)) };
+    }
+    if (horizon === 'half') {
+      const [y, h] = periodId.split('-H').map(Number);
+      const sm = (h - 1) * 6;
+      return { start: isoDate(new Date(y, sm, 1)), end: isoDate(new Date(y, sm + 6, 0)) };
+    }
+    throw new Error('unknown horizon: ' + horizon);
+  }
+
+  function periodLabel(horizon, periodId) {
+    const { start, end } = periodRange(horizon, periodId);
+    const md = (s) => s.slice(5).replace('-', '/');
+    if (horizon === 'week') return `${periodId}（${md(start)}–${md(end)}）`;
+    if (horizon === 'month') { const [y, m] = periodId.split('-'); return `${y}年${m}月`; }
+    if (horizon === 'quarter') { const [y, q] = periodId.split('-Q'); return `${y} Q${q}（${md(start)}–${md(end)}）`; }
+    if (horizon === 'half') { const [y, h] = periodId.split('-H'); return `${y} ${h === '1' ? '上半年' : '下半年'}`; }
+    return periodId;
+  }
+
+  function shiftPeriod(horizon, periodId, delta) {
+    if (horizon === 'week') {
+      const [y, w] = periodId.split('-W').map(Number);
+      const monday = isoWeekStart(y, w);
+      monday.setDate(monday.getDate() + delta * 7);
+      return weekId(monday);
+    }
+    if (horizon === 'month') {
+      const [y, m] = periodId.split('-').map(Number);
+      return monthId(new Date(y, m - 1 + delta, 1));
+    }
+    if (horizon === 'quarter') {
+      const [y, q] = periodId.split('-Q').map(Number);
+      return quarterId(new Date(y, (q - 1) * 3 + delta * 3, 1));
+    }
+    if (horizon === 'half') {
+      const [y, h] = periodId.split('-H').map(Number);
+      return halfId(new Date(y, (h - 1) * 6 + delta * 6, 1));
+    }
+    throw new Error('unknown horizon: ' + horizon);
+  }
+
+  function dateInPeriod(dateStr, horizon, periodId) {
+    const { start, end } = periodRange(horizon, periodId);
+    return dateStr >= start && dateStr <= end;
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -47,5 +146,7 @@
     DEFAULT_WORK_TYPES,
     uid,
     createEmptyState,
+    isoDate, parseDate, weekId, monthId, quarterId, halfId,
+    periodRange, periodLabel, shiftPeriod, dateInPeriod,
   };
 });
