@@ -194,6 +194,19 @@
       ? { ...t, dueDate: toDate, carryOverCount: (t.carryOverCount || 0) + 1 } : t)) };
   }
 
+  function filterTasks(state, opts) {
+    opts = opts || {};
+    const q = (opts.query || '').toLowerCase();
+    return state.tasks.filter((t) => {
+      if (opts.projectId && t.projectId !== opts.projectId) return false;
+      if (opts.status && t.status !== opts.status) return false;
+      if (opts.weekFocus && !t.isWeekFocus) return false;
+      if (opts.tag && !(t.tags || []).includes(opts.tag)) return false;
+      if (q && !(t.text || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -205,6 +218,6 @@
     periodRange, periodLabel, shiftPeriod, dateInPeriod,
     addCapture, updateEntity, removeEntity,
     addLogEntry, addTask, addCollection, triageCapture,
-    unfinishedBefore, carryOverTask,
+    unfinishedBefore, carryOverTask, filterTasks,
   };
 });

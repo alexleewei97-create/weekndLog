@@ -14,6 +14,7 @@
   let activeTab = 'today';
   let saveTimer = null;
   let undoRef = null;
+  let backlogFilter = { projectId: '', status: '', weekFocus: false, query: '' };
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g,
@@ -124,9 +125,59 @@
     return `<section class="pad">${overdueHtml}<h3>今日待办 <span class="muted">${todays.length}</span></h3>${tasksHtml}</section>`;
   }
 
+  function goalOptions(selectedId) {
+    const H = { week: '周', month: '月', quarter: '季', half: '半年' };
+    return ['<option value="">（不关联目标）</option>'].concat(
+      state.goals.map((g) => `<option value="${g.id}"${g.id === selectedId ? ' selected' : ''}>[${H[g.horizon]}] ${esc(g.title)}</option>`)
+    ).join('');
+  }
+  function renderTaskRow(t) {
+    return `<div class="card" data-id="${t.id}">
+      <div class="line">
+        <input class="grow" value="${esc(t.text)}" data-change="editTaskText" data-id="${t.id}" />
+        <button class="mini" data-action="toggleFocus" data-id="${t.id}">${t.isWeekFocus ? '★本周重点' : '标为本周重点'}</button>
+        <button class="mini danger" data-action="deleteEntry" data-key="tasks" data-id="${t.id}">删除</button>
+      </div>
+      <div class="meta">
+        <select data-change="editTaskStatus" data-id="${t.id}">
+          <option value="todo"${t.status === 'todo' ? ' selected' : ''}>待办</option>
+          <option value="doing"${t.status === 'doing' ? ' selected' : ''}>进行中</option>
+          <option value="done"${t.status === 'done' ? ' selected' : ''}>已完成</option>
+        </select>
+        <select data-change="editTaskProject" data-id="${t.id}">${projectOptions(t.projectId)}</select>
+        <select data-change="editTaskType" data-id="${t.id}">${workTypeOptions(t.workType)}</select>
+        <label class="muted">截止<input type="date" value="${t.dueDate || ''}" data-change="editTaskDue" data-id="${t.id}" /></label>
+        <select data-change="editTaskGoal" data-id="${t.id}">${goalOptions(t.linkedGoalId)}</select>
+        <input class="tags" placeholder="标签" value="${esc((t.tags || []).join(', '))}" data-change="editTaskTags" data-id="${t.id}" />
+        ${t.carryOverCount ? `<span class="muted">结转${t.carryOverCount}次</span>` : ''}
+      </div>
+    </div>`;
+  }
+  function renderBacklog() {
+    const list = L.filterTasks(state, backlogFilter);
+    const projFilterOpts = ['<option value="">全部项目</option>'].concat(
+      state.projects.map((p) => `<option value="${p.id}"${backlogFilter.projectId === p.id ? ' selected' : ''}>${esc(p.name)}</option>`)).join('');
+    return `<section class="pad">
+      <h2>待办</h2>
+      <div class="addrow"><input id="task-input" data-submit="addTaskInput" placeholder="新增待办…（回车添加）" /></div>
+      <div class="filters">
+        <select data-change="filterProject">${projFilterOpts}</select>
+        <select data-change="filterStatus">
+          <option value="">全部状态</option>
+          <option value="todo"${backlogFilter.status === 'todo' ? ' selected' : ''}>待办</option>
+          <option value="doing"${backlogFilter.status === 'doing' ? ' selected' : ''}>进行中</option>
+          <option value="done"${backlogFilter.status === 'done' ? ' selected' : ''}>已完成</option>
+        </select>
+        <label><input type="checkbox" data-change="filterFocus"${backlogFilter.weekFocus ? ' checked' : ''} /> 仅本周重点</label>
+        <input placeholder="搜索（回车）" value="${esc(backlogFilter.query)}" data-change="filterQuery" />
+      </div>
+      ${list.length ? list.map(renderTaskRow).join('') : '<p class="muted">没有匹配的待办</p>'}
+    </section>`;
+  }
+
   const renderers = {
     today: () => renderTodayCapture() + renderTodayAccomplishments() + renderTodayTasks(),
-    backlog: () => '<section class="pad"><h2>待办</h2><p class="muted">（建设中）</p></section>',
+    backlog: renderBacklog,
     planning: () => '<section class="pad"><h2>规划</h2><p class="muted">（建设中）</p></section>',
     collection: () => '<section class="pad"><h2>收集</h2><p class="muted">（建设中）</p></section>',
     report: () => '<section class="pad"><h2>汇报</h2><p class="muted">（建设中）</p></section>',
@@ -190,6 +241,20 @@
     state = L.updateEntity(state, 'tasks', el.dataset.id, { status: 'done', completedAt: new Date().toISOString() });
     save(); render(); toast('已完成 🎉');
   };
+
+  actions.addTaskInput = (el) => { const text = el.value.trim(); if (!text) return; state = L.addTask(state, { text }); el.value = ''; save(); render(); };
+  actions.toggleFocus = (el) => { const t = state.tasks.find((x) => x.id === el.dataset.id); state = L.updateEntity(state, 'tasks', el.dataset.id, { isWeekFocus: !t.isWeekFocus }); save(); render(); };
+  actions.editTaskText = (el) => { state = L.updateEntity(state, 'tasks', el.dataset.id, { text: el.value }); save(); };
+  actions.editTaskStatus = (el) => { const patch = { status: el.value }; if (el.value === 'done') patch.completedAt = new Date().toISOString(); state = L.updateEntity(state, 'tasks', el.dataset.id, patch); save(); render(); };
+  actions.editTaskProject = (el) => { state = L.updateEntity(state, 'tasks', el.dataset.id, { projectId: el.value || null }); save(); };
+  actions.editTaskType = (el) => { state = L.updateEntity(state, 'tasks', el.dataset.id, { workType: el.value || null }); save(); };
+  actions.editTaskDue = (el) => { state = L.updateEntity(state, 'tasks', el.dataset.id, { dueDate: el.value || null }); save(); };
+  actions.editTaskGoal = (el) => { state = L.updateEntity(state, 'tasks', el.dataset.id, { linkedGoalId: el.value || null }); save(); };
+  actions.editTaskTags = (el) => { state = L.updateEntity(state, 'tasks', el.dataset.id, { tags: parseTags(el.value) }); save(); };
+  actions.filterProject = (el) => { backlogFilter.projectId = el.value; render(); };
+  actions.filterStatus = (el) => { backlogFilter.status = el.value; render(); };
+  actions.filterFocus = (el) => { backlogFilter.weekFocus = el.checked; render(); };
+  actions.filterQuery = (el) => { backlogFilter.query = el.value; render(); };
 
   function renderTabs() {
     document.getElementById('tabs').innerHTML = TABS.map((t) =>

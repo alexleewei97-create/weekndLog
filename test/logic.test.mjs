@@ -116,3 +116,13 @@ test('carryOverTask sets dueDate and increments carryOverCount', () => {
   assert.equal(s.tasks[0].dueDate, '2026-07-02');
   assert.equal(s.tasks[0].carryOverCount, 1);
 });
+
+test('filterTasks by status, project, weekFocus, query', () => {
+  let s = L.createEmptyState();
+  s = L.addTask(s, { text: '关卡设计', status: 'todo', isWeekFocus: true });
+  s = L.addTask(s, { text: '数值调整', status: 'done' });
+  assert.equal(L.filterTasks(s, { status: 'todo' }).length, 1);
+  assert.equal(L.filterTasks(s, { weekFocus: true }).length, 1);
+  assert.equal(L.filterTasks(s, { query: '数值' })[0].text, '数值调整');
+  assert.equal(L.filterTasks(s, {}).length, 2);
+});
