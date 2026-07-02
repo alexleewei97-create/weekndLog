@@ -428,21 +428,26 @@
   const afterRender = {};
 
   let archiveQuery = '';
-  function renderDay(d) {
+  function renderTlDay(d) {
+    const wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][L.parseDate(d.date).getDay()];
     const rows = [];
     for (const e of d.entries) rows.push(`<div class="row"><span class="badge">成果</span><span class="grow">${e.isHighlight ? '⭐ ' : ''}${esc(e.text)}</span></div>`);
     for (const t of d.tasksDone) rows.push(`<div class="row"><span class="badge">完成</span><span class="grow">${esc(t.text)}</span></div>`);
     for (const c of d.collection) rows.push(`<div class="row"><span class="badge">${c.type === 'idea' ? '灵感' : '笔记'}</span><span class="grow">${esc(c.text)}</span></div>`);
-    return `<div class="day"><h4 class="muted">${esc(d.label)}</h4>${rows.join('')}</div>`;
+    return `<div class="tl-day"><div class="tl-dayhead">${esc(d.date)} <span class="muted">${wd}</span></div>${rows.join('') || '<p class="muted">—</p>'}</div>`;
   }
-  function renderWeek(w) { return `<details class="fold"><summary>${esc(w.label)}</summary>${w.days.map(renderDay).join('')}</details>`; }
-  function renderMonth(m) { return `<details class="fold pad" open><summary>${esc(m.label)}</summary>${m.weeks.map(renderWeek).join('')}</details>`; }
   function renderArchive() {
-    const tl = L.buildTimeline(state, { query: archiveQuery });
+    const days = L.archiveDays(state, { query: archiveQuery });
+    const cols = [];
+    for (const d of days) {
+      if (d.isMonthStart) cols.push(`<div class="tl-month">${esc(d.monthLabel)}</div>`);
+      cols.push(renderTlDay(d));
+    }
     return `<section class="pad">
       <h2>档案 · 个人编年史</h2>
+      <p class="subtitle">按住左右拖动、或用滚轮横向浏览；默认停在最近。</p>
       <div class="filters"><input class="grow" placeholder="全文搜索所有记录（回车）" value="${esc(archiveQuery)}" data-change="archiveSearch" /></div>
-      ${tl.months.length ? tl.months.map(renderMonth).join('') : '<p class="muted">还没有可回溯的记录</p>'}
+      ${days.length ? `<div id="timeline" class="timeline">${cols.join('')}</div>` : emptyState('还没有可回溯的记录', '📚')}
     </section>`;
   }
   renderers.archive = renderArchive;
@@ -509,6 +514,16 @@
   actions.tplPlan = (el) => setHeading('plan', el.value);
 
   afterRender.today = () => { const i = document.getElementById('capture-input'); if (i) i.focus(); };
+  afterRender.archive = () => {
+    const tl = document.getElementById('timeline');
+    if (!tl) return;
+    tl.scrollLeft = tl.scrollWidth; // park at most recent (right)
+    let down = false, startX = 0, startL = 0;
+    tl.addEventListener('pointerdown', (e) => { down = true; startX = e.clientX; startL = tl.scrollLeft; tl.setPointerCapture(e.pointerId); tl.classList.add('dragging'); });
+    tl.addEventListener('pointermove', (e) => { if (!down) return; tl.scrollLeft = startL - (e.clientX - startX); });
+    tl.addEventListener('pointerup', (e) => { down = false; try { tl.releasePointerCapture(e.pointerId); } catch (x) {} tl.classList.remove('dragging'); });
+    tl.addEventListener('wheel', (e) => { if (e.deltaY) { e.preventDefault(); tl.scrollLeft += e.deltaY; } }, { passive: false });
+  };
 
   actions.addCapture = (el) => {
     const text = el.value.trim(); if (!text) return;

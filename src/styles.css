@@ -132,3 +132,14 @@ details.fold[open] > summary::before { content: "▾ "; }
 [data-theme="dark"] #toast { background: #2b3240; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 #toast .link { color: #9ec1ff; }
+
+.timeline { display: flex; gap: 10px; overflow-x: auto; padding: 8px 2px 14px; cursor: grab; }
+.timeline.dragging { cursor: grabbing; user-select: none; }
+.tl-day { flex: 0 0 210px; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px; max-height: 62vh; overflow-y: auto; }
+.tl-dayhead { font-weight: 600; font-size: 13px; margin-bottom: 8px; position: sticky; top: 0;
+  background: var(--surface-2); padding-bottom: 4px; }
+.tl-day .row { border-bottom: 1px dashed var(--border); align-items: flex-start; }
+.tl-day .row:last-child { border-bottom: 0; }
+.tl-month { flex: 0 0 auto; align-self: stretch; display: flex; align-items: center;
+  writing-mode: vertical-rl; font-weight: 700; color: var(--brand-ink); letter-spacing: 3px; padding: 0 2px; }
