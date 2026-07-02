@@ -4,10 +4,10 @@
   const Store = root.WeikenStore;
 
   const TABS = [
-    { id: 'today', label: '今日' }, { id: 'backlog', label: '待办' },
-    { id: 'planning', label: '规划' }, { id: 'collection', label: '收集' },
-    { id: 'report', label: '汇报' }, { id: 'archive', label: '档案' },
-    { id: 'settings', label: '设置' },
+    { id: 'today', label: '今日', icon: '📅' }, { id: 'backlog', label: '待办', icon: '✅' },
+    { id: 'planning', label: '规划', icon: '🎯' }, { id: 'collection', label: '收集', icon: '💡' },
+    { id: 'report', label: '汇报', icon: '📊' }, { id: 'archive', label: '档案', icon: '📚' },
+    { id: 'settings', label: '设置', icon: '⚙️' },
   ];
 
   let state = null;
@@ -56,6 +56,14 @@
     saveTimer = setTimeout(async () => {
       try { await Store.save(state); } catch (e) { toast('保存失败：' + (Store.lastError || e)); }
     }, 700);
+  }
+
+  function applyTheme(theme) {
+    const t = theme === 'dark' ? 'dark' : 'light';
+    const el = document.documentElement;
+    if (el && el.setAttribute) el.setAttribute('data-theme', t);
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
   }
 
   function todayStr() { return L.isoDate(new Date()); }
@@ -345,6 +353,12 @@
   }
   renderers.archive = renderArchive;
   actions.archiveSearch = (el) => { archiveQuery = el.value; render(); };
+  actions.toggleTheme = () => {
+    const cur = (state.settings && state.settings.theme) || 'light';
+    const next = cur === 'dark' ? 'light' : 'dark';
+    state = { ...state, settings: { ...state.settings, theme: next } };
+    applyTheme(next); save();
+  };
 
   let reportSel = { type: 'week', week: null, month: null };
   function renderReport() {
@@ -527,7 +541,7 @@
 
   function renderTabs() {
     document.getElementById('tabs').innerHTML = TABS.map((t) =>
-      `<button class="tab${t.id === activeTab ? ' active' : ''}" data-action="tab" data-tab="${t.id}">${esc(t.label)}</button>`
+      `<button class="tab${t.id === activeTab ? ' active' : ''}" data-action="tab" data-tab="${t.id}"><span class="tico">${t.icon}</span>${esc(t.label)}</button>`
     ).join('');
   }
   function renderBanner() {
@@ -580,6 +594,7 @@
     }
     state = loaded;
     if (!state || !state.schemaVersion) state = L.createEmptyState();
+    applyTheme(state.settings && state.settings.theme);
     document.addEventListener('click', onClick);
     document.addEventListener('keydown', onKeydown);
     document.addEventListener('change', onChange);
