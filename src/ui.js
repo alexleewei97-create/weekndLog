@@ -285,7 +285,20 @@
       </div>`).join('')}
     </section>`;
   }
-  function renderDataSettings() { return ''; }  // Task 19 (import/export) + Task 20 (backup status)
+  function renderBackupStatus() { return ''; }  // filled by Task 20
+
+  function renderDataSettings() {
+    return `<section class="pad"><h3>数据备份</h3>
+      ${renderBackupStatus()}
+      <div class="addrow">
+        <button class="mini" data-action="exportData">导出 JSON 备份</button>
+        <button class="mini" data-action="importData">从 JSON 导入</button>
+        <input type="file" id="import-file" accept="application/json,.json" data-change="importFileChange" style="display:none" />
+      </div>
+      <label class="muted">快照保留份数
+        <input type="number" min="1" value="${state.settings.backupRetention || 30}" data-change="editRetention" style="width:70px" /></label>
+    </section>`;
+  }
   function renderHelpSettings() { return ''; }   // Task 21 (manual link)
   function renderSettings() {
     return `<section class="pad"><h2>设置</h2></section>`
@@ -471,6 +484,35 @@
   actions.addWorkType = (el) => { const name = el.value.trim(); if (!name) return; state = L.addWorkType(state, { name }); el.value = ''; save(); render(); };
   actions.editWorkTypeName = (el) => { state = L.updateEntity(state, 'workTypes', el.dataset.id, { name: el.value }); save(); };
   actions.toggleWorkTypeArchive = (el) => { const w = state.workTypes.find((x) => x.id === el.dataset.id); state = L.updateEntity(state, 'workTypes', el.dataset.id, { archived: !w.archived }); save(); render(); };
+
+  actions.exportData = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `weikenlog-${L.isoDate(new Date())}.json`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    state = { ...state, settings: { ...state.settings, lastBackupAt: new Date().toISOString() } };
+    save(); render(); toast('已导出备份');
+  };
+  actions.importData = () => { const inp = document.getElementById('import-file'); if (inp) inp.click(); };
+  actions.importFileChange = (el) => {
+    const file = el.files && el.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let obj;
+      try { obj = JSON.parse(reader.result); } catch (e) { toast('导入失败：不是有效的 JSON'); return; }
+      const v = L.validateState(obj);
+      if (!v.ok) { toast('导入失败：' + v.errors[0]); return; }
+      if (!confirm('导入将覆盖当前所有数据，确定继续？')) return;
+      state = v.state; save(); render(); toast('导入成功');
+    };
+    reader.readAsText(file);
+  };
+  actions.editRetention = (el) => {
+    const n = parseInt(el.value, 10) || 30;
+    state = { ...state, settings: { ...state.settings, backupRetention: n } };
+    save();
+  };
 
   function renderTabs() {
     document.getElementById('tabs').innerHTML = TABS.map((t) =>

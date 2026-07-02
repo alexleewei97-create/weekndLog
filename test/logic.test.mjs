@@ -193,3 +193,12 @@ test('buildTimeline filters by query across sources', () => {
   assert.equal(days.length, 1);
   assert.equal(days[0].entries[0].text, '关卡设计');
 });
+
+test('validateState rejects malformed and accepts valid', () => {
+  assert.equal(L.validateState(null).ok, false);
+  assert.equal(L.validateState({ schemaVersion: 1 }).ok, false); // missing arrays
+  const good = L.createEmptyState();
+  const res = L.validateState(good);
+  assert.equal(res.ok, true);
+  assert.equal(res.state, good);
+});

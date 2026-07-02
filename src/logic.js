@@ -319,6 +319,18 @@
     return { months };
   }
 
+  function validateState(obj) {
+    if (!obj || typeof obj !== 'object') return { ok: false, errors: ['不是有效的 JSON 对象'] };
+    const errors = [];
+    if (typeof obj.schemaVersion !== 'number') errors.push('缺少 schemaVersion');
+    for (const key of ['projects', 'workTypes', 'captureItems', 'logEntries', 'tasks', 'goals', 'collectionItems']) {
+      if (!Array.isArray(obj[key])) errors.push(`字段 ${key} 缺失或不是数组`);
+    }
+    if (!obj.settings || typeof obj.settings !== 'object') errors.push('缺少 settings');
+    if (errors.length) return { ok: false, errors };
+    return { ok: true, errors: [], state: obj };
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -336,5 +348,6 @@
     addProject, addWorkType,
     generateReport,
     buildTimeline,
+    validateState,
   };
 });
