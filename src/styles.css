@@ -53,3 +53,5 @@ pre.report { white-space: pre-wrap; background: #fbfcfe; border: 1px solid var(-
 textarea.report { width: 100%; min-height: 320px; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 details.fold > summary { cursor: pointer; padding: 6px 0; font-weight: 600; }
+.day { margin: 10px 0 4px; }
+.day h4 { margin: 0 0 4px; }

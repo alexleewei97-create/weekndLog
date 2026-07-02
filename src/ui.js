@@ -146,7 +146,7 @@
         </select>
         <select data-change="editTaskProject" data-id="${t.id}">${projectOptions(t.projectId)}</select>
         <select data-change="editTaskType" data-id="${t.id}">${workTypeOptions(t.workType)}</select>
-        <label class="muted">截止<input type="date" value="${t.dueDate || ''}" data-change="editTaskDue" data-id="${t.id}" /></label>
+        <label class="muted">截止<input type="date" value="${esc(t.dueDate || '')}" data-change="editTaskDue" data-id="${t.id}" /></label>
         <select data-change="editTaskGoal" data-id="${t.id}">${goalOptions(t.linkedGoalId)}</select>
         <input class="tags" placeholder="标签" value="${esc((t.tags || []).join(', '))}" data-change="editTaskTags" data-id="${t.id}" />
         ${t.carryOverCount ? `<span class="muted">结转${t.carryOverCount}次</span>` : ''}
@@ -269,7 +269,7 @@
       <div class="addrow"><input data-submit="addProject" placeholder="新增项目…（回车）" /></div>
       ${state.projects.length ? state.projects.map((p) => `<div class="row" data-id="${p.id}">
         <input class="grow" value="${esc(p.name)}" data-change="editProjectName" data-id="${p.id}" />
-        <input type="color" value="${p.color || '#3b6ef5'}" data-change="editProjectColor" data-id="${p.id}" />
+        <input type="color" value="${esc(p.color || '#3b6ef5')}" data-change="editProjectColor" data-id="${p.id}" />
         <button class="mini" data-action="toggleProjectArchive" data-id="${p.id}">${p.archived ? '取消归档' : '归档'}</button>
         <button class="mini danger" data-action="deleteEntry" data-key="projects" data-id="${p.id}">删除</button>
       </div>`).join('') : '<p class="muted">还没有项目</p>'}
@@ -441,7 +441,8 @@
   actions.deleteEntry = (el) => {
     const key = el.dataset.key, id = el.dataset.id;
     const item = state[key].find((x) => x.id === id);
-    state = L.removeEntity(state, key, id); save(); render(); offerUndo(key, item);
+    state = L.removeEntity(state, key, id); save(); render();
+    if (item) offerUndo(key, item); else toast('已删除');
   };
 
   actions.carryOne = (el) => { state = L.carryOverTask(state, el.dataset.id, L.isoDate(new Date())); save(); render(); };
@@ -567,7 +568,17 @@
 
   async function boot() {
     await Store.init();
-    state = await Store.load();
+    let loaded;
+    try { loaded = await Store.load(); }
+    catch (e) {
+      const v = document.getElementById('view');
+      if (v) v.innerHTML = '<section class="pad"><h2>⚠ 无法加载数据</h2>'
+        + '<p>' + esc('无法读取数据文件 weikenlog-data.json。为避免覆盖你的数据，应用暂不加载。请关闭后用 威肯Log.cmd 重新启动；若反复出现，请检查该文件是否损坏（可从 backups/ 恢复）。') + '</p>'
+        + (Store.lastError || (e && e.message) ? '<p class="muted">' + esc('详情：' + (Store.lastError || e.message)) + '</p>' : '')
+        + '</section>';
+      return;
+    }
+    state = loaded;
     if (!state || !state.schemaVersion) state = L.createEmptyState();
     document.addEventListener('click', onClick);
     document.addEventListener('keydown', onKeydown);

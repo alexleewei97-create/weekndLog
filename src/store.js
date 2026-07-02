@@ -16,10 +16,13 @@
 
     async load() {
       if (this.mode === 'server') {
-        try {
-          const data = await (await fetch('/api/data', { cache: 'no-store' })).json();
-          return data || root.WeikenLogic.createEmptyState();
-        } catch (e) { this.lastError = String(e); }
+        // A read ERROR must not silently yield empty state — the first save would
+        // then overwrite the real data file. Only a successful null body (fresh
+        // install) maps to an empty state.
+        const res = await fetch('/api/data', { cache: 'no-store' });
+        if (!res.ok) throw new Error('读取数据失败: HTTP ' + res.status);
+        const data = await res.json();
+        return data || root.WeikenLogic.createEmptyState();
       }
       const raw = localStorage.getItem(LS_KEY);
       if (raw) {
