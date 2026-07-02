@@ -297,11 +297,31 @@
     backlog: renderBacklog,
     planning: renderPlanning,
     collection: renderCollection,
-    archive: () => '<section class="pad"><h2>档案</h2><p class="muted">（建设中）</p></section>',
     settings: renderSettings,
   };
   const actions = {};
   const afterRender = {};
+
+  let archiveQuery = '';
+  function renderDay(d) {
+    const rows = [];
+    for (const e of d.entries) rows.push(`<div class="row"><span class="badge">成果</span><span class="grow">${e.isHighlight ? '⭐ ' : ''}${esc(e.text)}</span></div>`);
+    for (const t of d.tasksDone) rows.push(`<div class="row"><span class="badge">完成</span><span class="grow">${esc(t.text)}</span></div>`);
+    for (const c of d.collection) rows.push(`<div class="row"><span class="badge">${c.type === 'idea' ? '灵感' : '笔记'}</span><span class="grow">${esc(c.text)}</span></div>`);
+    return `<div class="day"><h4 class="muted">${esc(d.label)}</h4>${rows.join('')}</div>`;
+  }
+  function renderWeek(w) { return `<details class="fold"><summary>${esc(w.label)}</summary>${w.days.map(renderDay).join('')}</details>`; }
+  function renderMonth(m) { return `<details class="fold pad" open><summary>${esc(m.label)}</summary>${m.weeks.map(renderWeek).join('')}</details>`; }
+  function renderArchive() {
+    const tl = L.buildTimeline(state, { query: archiveQuery });
+    return `<section class="pad">
+      <h2>档案 · 个人编年史</h2>
+      <div class="filters"><input class="grow" placeholder="全文搜索所有记录（回车）" value="${esc(archiveQuery)}" data-change="archiveSearch" /></div>
+      ${tl.months.length ? tl.months.map(renderMonth).join('') : '<p class="muted">还没有可回溯的记录</p>'}
+    </section>`;
+  }
+  renderers.archive = renderArchive;
+  actions.archiveSearch = (el) => { archiveQuery = el.value; render(); };
 
   let reportSel = { type: 'week', week: null, month: null };
   function renderReport() {

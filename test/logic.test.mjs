@@ -173,3 +173,23 @@ test('generateReport groups outputs by project with headings and highlights', ()
   assert.match(out, /### 未归类/);
   assert.match(out, /关卡1-5 定稿/);
 });
+
+test('buildTimeline groups by month/week/day newest-first', () => {
+  let s = L.createEmptyState();
+  s = L.addLogEntry(s, { text: '六月的事', date: '2026-06-15' });
+  s = L.addLogEntry(s, { text: '七月的事', date: '2026-07-02' });
+  const tl = L.buildTimeline(s, {});
+  assert.equal(tl.months[0].monthId, '2026-07');
+  assert.equal(tl.months[1].monthId, '2026-06');
+  assert.equal(tl.months[0].weeks[0].days[0].entries[0].text, '七月的事');
+});
+
+test('buildTimeline filters by query across sources', () => {
+  let s = L.createEmptyState();
+  s = L.addLogEntry(s, { text: '关卡设计', date: '2026-07-02' });
+  s = L.addLogEntry(s, { text: '数值调整', date: '2026-07-03' });
+  const tl = L.buildTimeline(s, { query: '关卡' });
+  const days = tl.months.flatMap((m) => m.weeks.flatMap((w) => w.days));
+  assert.equal(days.length, 1);
+  assert.equal(days[0].entries[0].text, '关卡设计');
+});

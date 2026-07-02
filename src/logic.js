@@ -290,6 +290,35 @@
     ].join('\n');
   }
 
+  function buildTimeline(state, opts) {
+    opts = opts || {};
+    const q = (opts.query || '').toLowerCase();
+    const match = (txt) => !q || String(txt || '').toLowerCase().includes(q);
+    const matchItem = (x) => match(x.text) || (x.tags || []).some(match);
+    const dayMap = {};
+    const add = (date, bucket, item) => {
+      if (!date) return;
+      (dayMap[date] = dayMap[date] || { entries: [], tasksDone: [], collection: [] })[bucket].push(item);
+    };
+    for (const e of state.logEntries) if (matchItem(e)) add(e.date, 'entries', e);
+    for (const t of state.tasks) if (t.completedAt && matchItem(t)) add(t.completedAt.slice(0, 10), 'tasksDone', t);
+    for (const c of state.collectionItems) if (matchItem(c)) add((c.createdAt || '').slice(0, 10), 'collection', c);
+
+    const months = [];
+    const mIndex = {};
+    for (const date of Object.keys(dayMap).sort().reverse()) {
+      const d = parseDate(date);
+      const mId = monthId(d), wId = weekId(d);
+      let m = mIndex[mId];
+      if (!m) { m = { monthId: mId, label: `${mId.replace('-', '年')}月`, weeks: [], _wi: {} }; mIndex[mId] = m; months.push(m); }
+      let w = m._wi[wId];
+      if (!w) { w = { weekId: wId, label: periodLabel('week', wId), days: [] }; m._wi[wId] = w; m.weeks.push(w); }
+      w.days.push({ date, label: date, ...dayMap[date] });
+    }
+    for (const m of months) delete m._wi;
+    return { months };
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -306,5 +335,6 @@
     convertIdeaToTask,
     addProject, addWorkType,
     generateReport,
+    buildTimeline,
   };
 });
