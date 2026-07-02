@@ -297,12 +297,65 @@
     backlog: renderBacklog,
     planning: renderPlanning,
     collection: renderCollection,
-    report: () => '<section class="pad"><h2>汇报</h2><p class="muted">（建设中）</p></section>',
     archive: () => '<section class="pad"><h2>档案</h2><p class="muted">（建设中）</p></section>',
     settings: renderSettings,
   };
   const actions = {};
   const afterRender = {};
+
+  let reportSel = { type: 'week', week: null, month: null };
+  function renderReport() {
+    if (!reportSel.week) reportSel.week = L.weekId(new Date());
+    if (!reportSel.month) reportSel.month = L.monthId(new Date());
+    const type = reportSel.type;
+    const pid = type === 'week' ? reportSel.week : reportSel.month;
+    const text = L.generateReport(state, type, pid);
+    const H = (state.settings.reportTemplates && state.settings.reportTemplates.headings) || {};
+    return `<section class="pad">
+      <h2>汇报</h2>
+      <div class="filters">
+        <select data-change="reportType">
+          <option value="week"${type === 'week' ? ' selected' : ''}>周报</option>
+          <option value="month"${type === 'month' ? ' selected' : ''}>月报</option>
+        </select>
+        <span class="muted">${esc(L.periodLabel(type, pid))}</span>
+        <button class="mini" data-action="reportPrev">← 上一期</button>
+        <button class="mini" data-action="reportNext">下一期 →</button>
+        <button class="mini" data-action="reportRegen">重新生成</button>
+      </div>
+      <textarea id="report-text" class="report">${esc(text)}</textarea>
+      <div class="addrow"><button class="primary" data-action="reportCopy">复制到剪贴板</button>
+        <span class="muted">生成后可在上面手动微调，复制的是你当前编辑的内容。</span></div>
+      <details class="fold"><summary>自定义模板标题</summary><div class="meta">
+        <label>进展<input value="${esc(H.progress || '重点进展')}" data-change="tplProgress" /></label>
+        <label>产出<input value="${esc(H.output || '具体产出')}" data-change="tplOutput" /></label>
+        <label>风险<input value="${esc(H.risk || '问题与风险')}" data-change="tplRisk" /></label>
+        <label>计划<input value="${esc(H.plan || '下阶段计划')}" data-change="tplPlan" /></label>
+      </div></details>
+    </section>`;
+  }
+  renderers.report = renderReport;
+
+  function setHeading(key, val) {
+    const rt = state.settings.reportTemplates || {};
+    const headings = { ...(rt.headings || {}), [key]: val };
+    state = { ...state, settings: { ...state.settings, reportTemplates: { ...rt, headings } } };
+    save();
+  }
+  actions.reportType = (el) => { reportSel.type = el.value; render(); };
+  actions.reportPrev = () => { const t = reportSel.type; reportSel[t] = L.shiftPeriod(t, reportSel[t], -1); render(); };
+  actions.reportNext = () => { const t = reportSel.type; reportSel[t] = L.shiftPeriod(t, reportSel[t], 1); render(); };
+  actions.reportRegen = () => { render(); };
+  actions.reportCopy = async () => {
+    const ta = document.getElementById('report-text');
+    try { await navigator.clipboard.writeText(ta.value); }
+    catch (e) { ta.select(); document.execCommand('copy'); }
+    toast('已复制到剪贴板');
+  };
+  actions.tplProgress = (el) => setHeading('progress', el.value);
+  actions.tplOutput = (el) => setHeading('output', el.value);
+  actions.tplRisk = (el) => setHeading('risk', el.value);
+  actions.tplPlan = (el) => setHeading('plan', el.value);
 
   afterRender.today = () => { const i = document.getElementById('capture-input'); if (i) i.focus(); };
 
