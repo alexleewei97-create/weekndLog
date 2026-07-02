@@ -105,14 +105,29 @@
       </span>
     </div>`;
   }
+  function dayLabel(iso) {
+    const wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][L.parseDate(iso).getDay()];
+    return `${iso} ${wd}`;
+  }
+  function renderDayNav() {
+    const isToday = selectedDate === L.isoDate(new Date());
+    return `<section class="pad">
+      <div class="daynav">
+        <span class="date">📅 ${esc(dayLabel(selectedDate))}</span>
+        <button class="mini" data-action="dayPrev">← 前一天</button>
+        <button class="mini" data-action="dayNext">后一天 →</button>
+        <input type="date" value="${esc(selectedDate)}" data-change="dayPick" />
+        ${isToday ? '<span class="muted today-flag">· 今天</span>' : '<button class="mini" data-action="dayToday">· 回到今天</button>'}
+      </div>
+    </section>`;
+  }
   function renderTodayCapture() {
     const pending = state.captureItems.filter((c) => c.status === 'pending');
     return `<section class="pad">
-      <h2>今日 · ${todayStr()}</h2>
       <div class="capture"><input id="capture-input" data-submit="addCapture"
         placeholder="随手记一条…（回车存入收件箱）" /></div>
-      <h3>收件箱 <span class="muted">${pending.length}</span></h3>
-      ${pending.length ? pending.map(renderCaptureRow).join('') : '<p class="muted">暂无待整理条目</p>'}
+      ${sectionTitle('收件箱', pending.length)}
+      ${pending.length ? pending.map(renderCaptureRow).join('') : emptyState('暂无待整理条目', '📥')}
     </section>`;
   }
   function renderAccRow(e) {
@@ -130,19 +145,19 @@
     </div>`;
   }
   function renderTodayAccomplishments() {
-    const today = L.isoDate(new Date());
-    const items = state.logEntries.filter((e) => e.date === today);
+    const items = state.logEntries.filter((e) => e.date === selectedDate);
     return `<section class="pad">
-      <h3>今日成果 <span class="muted">${items.length}</span></h3>
+      ${sectionTitle('成果', items.length)}
       <div class="addrow"><input id="acc-input" data-submit="addAccomplishment"
-        placeholder="直接记一条今日成果…（回车添加）" /></div>
-      ${items.length ? items.map(renderAccRow).join('') : '<p class="muted">今天还没有成果记录</p>'}
+        placeholder="记一条这天的成果…（回车添加）" /></div>
+      ${items.length ? items.map(renderAccRow).join('') : emptyState('这天还没有成果记录', '📝')}
     </section>`;
   }
   function renderTodayTasks() {
     const today = L.isoDate(new Date());
-    const todays = state.tasks.filter((t) => t.status !== 'done' && (t.dueDate === today || t.isWeekFocus));
-    const overdue = L.unfinishedBefore(state, today);
+    const isToday = selectedDate === today;
+    const todays = state.tasks.filter((t) => t.status !== 'done' && (t.dueDate === selectedDate || (isToday && t.isWeekFocus)));
+    const overdue = isToday ? L.unfinishedBefore(state, today) : [];
     const overdueHtml = overdue.length ? `<div class="notice">
       昨日及更早未完成 <b>${overdue.length}</b> 项
       <button class="mini" data-action="carryAll">全部带入今天</button>
@@ -153,9 +168,10 @@
     const tasksHtml = todays.length ? todays.map((t) => `<div class="row" data-id="${t.id}">
       <input type="checkbox" data-action="completeTask" data-id="${t.id}" />
       <span class="grow">${esc(t.text)}</span>
-      ${t.isWeekFocus ? '<span class="badge">本周重点</span>' : ''}
-    </div>`).join('') : '<p class="muted">今天没有安排任务，可到"待办"设置截止日或标为本周重点</p>';
-    return `<section class="pad">${overdueHtml}<h3>今日待办 <span class="muted">${todays.length}</span></h3>${tasksHtml}</section>`;
+      ${projectChip(t.projectId)}
+      ${isToday && t.isWeekFocus ? '<span class="badge">本周重点</span>' : ''}
+    </div>`).join('') : emptyState(isToday ? '今天没有安排任务，可到"待办"设置截止日或标为本周重点' : '这天没有到期任务', '✅');
+    return `<section class="pad">${overdueHtml}${sectionTitle(isToday ? '今日待办' : '当天待办', todays.length)}${tasksHtml}</section>`;
   }
 
   function goalOptions(selectedId) {
@@ -209,6 +225,7 @@
   }
 
   let planSel = null;
+  let selectedDate = null;
   let planMode = 'view';
   function currentPeriods() {
     const now = new Date();
@@ -386,7 +403,7 @@
   }
 
   const renderers = {
-    today: () => renderTodayCapture() + renderTodayAccomplishments() + renderTodayTasks(),
+    today: () => renderDayNav() + renderTodayCapture() + renderTodayAccomplishments() + renderTodayTasks(),
     backlog: renderBacklog,
     planning: renderPlanning,
     collection: renderCollection,
@@ -492,7 +509,7 @@
       if (item) offerUndo('captureItems', item); else toast('已删除');
       return;
     }
-    if (target === 'log') state = L.triageCapture(state, id, 'log', { date: L.isoDate(new Date()) });
+    if (target === 'log') state = L.triageCapture(state, id, 'log', { date: selectedDate });
     else if (target === 'task') state = L.triageCapture(state, id, 'task', {});
     else if (target === 'idea') state = L.triageCapture(state, id, 'collection', { type: 'idea' });
     else if (target === 'note') state = L.triageCapture(state, id, 'collection', { type: 'note' });
@@ -502,7 +519,7 @@
 
   actions.addAccomplishment = (el) => {
     const text = el.value.trim(); if (!text) return;
-    state = L.addLogEntry(state, { text, date: L.isoDate(new Date()) });
+    state = L.addLogEntry(state, { text, date: selectedDate });
     el.value = ''; save(); render();
   };
   actions.toggleHighlight = (el) => {
@@ -531,6 +548,10 @@
     state = L.updateEntity(state, 'tasks', el.dataset.id, { status: 'done', completedAt: new Date().toISOString() });
     save(); render(); toast('已完成 🎉');
   };
+  actions.dayPrev = () => { selectedDate = L.shiftDate(selectedDate, -1); render(); };
+  actions.dayNext = () => { selectedDate = L.shiftDate(selectedDate, 1); render(); };
+  actions.dayPick = (el) => { if (el.value) { selectedDate = el.value; render(); } };
+  actions.dayToday = () => { selectedDate = L.isoDate(new Date()); render(); };
 
   actions.addTaskInput = (el) => { const text = el.value.trim(); if (!text) return; state = L.addTask(state, { text }); el.value = ''; save(); render(); };
   actions.toggleFocus = (el) => { const t = state.tasks.find((x) => x.id === el.dataset.id); state = L.updateEntity(state, 'tasks', el.dataset.id, { isWeekFocus: !t.isWeekFocus }); save(); render(); };
@@ -663,6 +684,7 @@
     state = loaded;
     if (!state || !state.schemaVersion) state = L.createEmptyState();
     applyTheme(state.settings && state.settings.theme);
+    selectedDate = L.isoDate(new Date());
     document.addEventListener('click', onClick);
     document.addEventListener('keydown', onKeydown);
     document.addEventListener('change', onChange);
