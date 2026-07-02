@@ -207,6 +207,16 @@
     });
   }
 
+  function addGoal(state, fields) {
+    const g = { id: uid('goal'), horizon: fields.horizon, period: fields.period, title: fields.title || '',
+      projectId: fields.projectId || null, status: fields.status || 'planned',
+      progressNote: fields.progressNote || '', createdAt: fields.createdAt || new Date().toISOString() };
+    return { ...state, goals: [...state.goals, g] };
+  }
+  function goalsFor(state, horizon, periodId) {
+    return state.goals.filter((g) => g.horizon === horizon && g.period === periodId);
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -219,5 +229,6 @@
     addCapture, updateEntity, removeEntity,
     addLogEntry, addTask, addCollection, triageCapture,
     unfinishedBefore, carryOverTask, filterTasks,
+    addGoal, goalsFor,
   };
 });

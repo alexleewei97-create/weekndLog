@@ -175,10 +175,51 @@
     </section>`;
   }
 
+  let planSel = null;
+  function currentPeriods() {
+    const now = new Date();
+    return { week: L.weekId(now), month: L.monthId(now), quarter: L.quarterId(now), half: L.halfId(now) };
+  }
+  function renderGoalRow(g) {
+    return `<div class="card" data-id="${g.id}">
+      <div class="line">
+        <input class="grow" value="${esc(g.title)}" data-change="editGoalTitle" data-id="${g.id}" />
+        <select data-change="editGoalStatus" data-id="${g.id}">
+          <option value="planned"${g.status === 'planned' ? ' selected' : ''}>计划中</option>
+          <option value="inProgress"${g.status === 'inProgress' ? ' selected' : ''}>进行中</option>
+          <option value="done"${g.status === 'done' ? ' selected' : ''}>已完成</option>
+          <option value="dropped"${g.status === 'dropped' ? ' selected' : ''}>已放弃</option>
+        </select>
+        <button class="mini danger" data-action="deleteEntry" data-key="goals" data-id="${g.id}">删除</button>
+      </div>
+      <div class="meta">
+        <select data-change="editGoalProject" data-id="${g.id}">${projectOptions(g.projectId)}</select>
+        <input class="grow" placeholder="进展备注（汇报用）" value="${esc(g.progressNote)}" data-change="editGoalNote" data-id="${g.id}" />
+      </div>
+    </div>`;
+  }
+  function renderHorizon(h, label) {
+    const pid = planSel[h];
+    const goals = L.goalsFor(state, h, pid);
+    return `<div class="pad">
+      <h3>${label} · <span class="muted">${esc(L.periodLabel(h, pid))}</span>
+        <button class="mini" data-action="planPrev" data-h="${h}">←</button>
+        <button class="mini" data-action="planNext" data-h="${h}">→</button></h3>
+      <div class="addrow"><input data-submit="addGoal" data-h="${h}" placeholder="新增${label}目标…（回车）" /></div>
+      ${goals.length ? goals.map(renderGoalRow).join('') : '<p class="muted">暂无目标</p>'}
+    </div>`;
+  }
+  function renderPlanning() {
+    if (!planSel) planSel = currentPeriods();
+    const horizons = [['week', '本周重点'], ['month', '月度'], ['quarter', '季度'], ['half', '半年度']];
+    return `<section class="pad"><h2>规划</h2><p class="muted">给每层目标关联项目，日常待办可在"待办"里关联到这些目标。</p></section>`
+      + horizons.map(([h, label]) => renderHorizon(h, label)).join('');
+  }
+
   const renderers = {
     today: () => renderTodayCapture() + renderTodayAccomplishments() + renderTodayTasks(),
     backlog: renderBacklog,
-    planning: () => '<section class="pad"><h2>规划</h2><p class="muted">（建设中）</p></section>',
+    planning: renderPlanning,
     collection: () => '<section class="pad"><h2>收集</h2><p class="muted">（建设中）</p></section>',
     report: () => '<section class="pad"><h2>汇报</h2><p class="muted">（建设中）</p></section>',
     archive: () => '<section class="pad"><h2>档案</h2><p class="muted">（建设中）</p></section>',
@@ -255,6 +296,14 @@
   actions.filterStatus = (el) => { backlogFilter.status = el.value; render(); };
   actions.filterFocus = (el) => { backlogFilter.weekFocus = el.checked; render(); };
   actions.filterQuery = (el) => { backlogFilter.query = el.value; render(); };
+
+  actions.planPrev = (el) => { const h = el.dataset.h; planSel[h] = L.shiftPeriod(h, planSel[h], -1); render(); };
+  actions.planNext = (el) => { const h = el.dataset.h; planSel[h] = L.shiftPeriod(h, planSel[h], 1); render(); };
+  actions.addGoal = (el) => { const title = el.value.trim(); if (!title) return; const h = el.dataset.h; state = L.addGoal(state, { horizon: h, period: planSel[h], title }); el.value = ''; save(); render(); };
+  actions.editGoalTitle = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { title: el.value }); save(); };
+  actions.editGoalStatus = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { status: el.value }); save(); render(); };
+  actions.editGoalProject = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { projectId: el.value || null }); save(); };
+  actions.editGoalNote = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { progressNote: el.value }); save(); };
 
   function renderTabs() {
     document.getElementById('tabs').innerHTML = TABS.map((t) =>

@@ -126,3 +126,12 @@ test('filterTasks by status, project, weekFocus, query', () => {
   assert.equal(L.filterTasks(s, { query: '数值' })[0].text, '数值调整');
   assert.equal(L.filterTasks(s, {}).length, 2);
 });
+
+test('addGoal and goalsFor scope by horizon+period', () => {
+  let s = L.createEmptyState();
+  s = L.addGoal(s, { horizon: 'quarter', period: '2026-Q3', title: '上线 Beta' });
+  s = L.addGoal(s, { horizon: 'month', period: '2026-07', title: '完成关卡 1-5' });
+  assert.equal(L.goalsFor(s, 'quarter', '2026-Q3').length, 1);
+  assert.equal(L.goalsFor(s, 'quarter', '2026-Q2').length, 0);
+  assert.equal(L.goalsFor(s, 'month', '2026-07')[0].title, '完成关卡 1-5');
+});
