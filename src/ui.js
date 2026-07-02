@@ -151,10 +151,29 @@
       ${items.length ? items.map(renderAccRow).join('') : emptyState('这天还没有成果记录', '📝')}
     </section>`;
   }
+  function dueHint(t) {
+    if (!t.dueDate) return '';
+    const today = L.isoDate(new Date());
+    if (t.dueDate === today) return '<span class="pill pill--warn">今日截止</span>';
+    if (t.dueDate < today) return '<span class="pill pill--warn">已逾期</span>';
+    const days = Math.round((L.parseDate(t.dueDate).getTime() - L.parseDate(today).getTime()) / 86400000);
+    return `<span class="pill pill--muted">还有${days}天</span>`;
+  }
+  function todayTaskRow(t) {
+    return `<div class="row" data-id="${t.id}">
+      <input type="checkbox" data-action="completeTask" data-id="${t.id}" />
+      <span class="grow">${esc(t.text)}</span>
+      ${projectChip(t.projectId)}
+      ${dueHint(t)}
+      ${t.isWeekFocus ? '<span class="badge">本周重点</span>' : ''}
+    </div>`;
+  }
   function renderTodayTasks() {
     const today = L.isoDate(new Date());
     const isToday = selectedDate === today;
-    const todays = state.tasks.filter((t) => t.status !== 'done' && (t.dueDate === selectedDate || (isToday && t.isWeekFocus)));
+    const all = L.tasksForDay(state, selectedDate, today);
+    const longterm = all.filter((t) => t.dueDate && t.dueDate > selectedDate);
+    const dueGroup = all.filter((t) => !(t.dueDate && t.dueDate > selectedDate));
     const overdue = isToday ? L.unfinishedBefore(state, today) : [];
     const overdueHtml = overdue.length ? `<div class="notice">
       昨日及更早未完成 <b>${overdue.length}</b> 项
@@ -163,13 +182,11 @@
         <span class="grow">${esc(t.text)}${t.carryOverCount ? ` <span class="muted">·结转${t.carryOverCount}次</span>` : ''}</span>
         <button class="mini" data-action="carryOne" data-id="${t.id}">带入</button>
       </div>`).join('')}</div>` : '';
-    const tasksHtml = todays.length ? todays.map((t) => `<div class="row" data-id="${t.id}">
-      <input type="checkbox" data-action="completeTask" data-id="${t.id}" />
-      <span class="grow">${esc(t.text)}</span>
-      ${projectChip(t.projectId)}
-      ${isToday && t.isWeekFocus ? '<span class="badge">本周重点</span>' : ''}
-    </div>`).join('') : emptyState(isToday ? '今天没有安排任务，可到"待办"设置截止日或标为本周重点' : '这天没有到期任务', '✅');
-    return `<section class="pad">${overdueHtml}${sectionTitle(isToday ? '今日待办' : '当天待办', todays.length)}${tasksHtml}</section>`;
+    const dueHtml = dueGroup.length ? dueGroup.map(todayTaskRow).join('')
+      : emptyState(isToday ? '今天没有到期任务，可到"待办"设置截止日或标为本周重点' : '这天没有到期任务', '✅');
+    const longSection = longterm.length
+      ? `${sectionTitle('长线任务', longterm.length)}${longterm.map(todayTaskRow).join('')}` : '';
+    return `<section class="pad">${overdueHtml}${sectionTitle(isToday ? '今日待办' : '当天待办', dueGroup.length)}${dueHtml}${longSection}</section>`;
   }
 
   function goalOptions(selectedId) {
