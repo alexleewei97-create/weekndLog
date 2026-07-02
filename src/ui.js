@@ -91,8 +91,6 @@
     if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
   }
 
-  function todayStr() { return L.isoDate(new Date()); }
-
   function renderCaptureRow(c) {
     return `<div class="row" data-id="${c.id}">
       <span class="grow">${esc(c.text)}</span>
@@ -630,7 +628,7 @@
 
   function renderTabs() {
     document.getElementById('tabs').innerHTML = TABS.map((t) =>
-      `<button class="tab${t.id === activeTab ? ' active' : ''}" data-action="tab" data-tab="${t.id}"><span class="tico">${t.icon}</span>${esc(t.label)}</button>`
+      `<button class="tab${t.id === activeTab ? ' active' : ''}" data-action="tab" data-tab="${t.id}"><span class="tico">${esc(t.icon)}</span>${esc(t.label)}</button>`
     ).join('');
   }
   function renderBanner() {
