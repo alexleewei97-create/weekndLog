@@ -141,6 +141,7 @@
           <select data-change="editAccProject" data-id="${e.id}">${projectOptions(e.projectId)}</select>
           <select data-change="editAccType" data-id="${e.id}">${workTypeOptions(e.workType)}</select>
           <input class="tags" placeholder="标签，逗号分隔" value="${esc((e.tags || []).join(', '))}" data-change="editAccTags" data-id="${e.id}" />
+          <input class="grow" placeholder="备注（可选）" value="${esc(e.note || '')}" data-change="editAccNote" data-id="${e.id}" />
         </div>
       </div>`;
     }
@@ -154,6 +155,7 @@
           <button class="iconbtn danger" data-action="deleteEntry" data-key="logEntries" data-id="${e.id}" title="删除">🗑</button>
         </span>
       </div>
+      ${e.note ? `<div class="acc-note muted">${esc(e.note)}</div>` : ''}
       ${hasMeta ? `<div class="meta">${projectChip(e.projectId)}${e.workType ? `<span class="chip">${esc(e.workType)}</span>` : ''}${(e.tags || []).map((t) => `<span class="tag-chip">#${esc(t)}</span>`).join(' ')}</div>` : ''}
     </div>`;
   }
@@ -336,7 +338,7 @@
     if (editing.has(c.id)) {
       return `<div class="card" data-id="${c.id}" style="border-left-color:${projectColor(c.projectId)}">
         <div class="line">
-          <span class="badge">${isIdea ? '灵感' : '笔记'}</span>
+          <span class="tag tag--${isIdea ? 'idea' : 'note'}">${isIdea ? '灵感' : '笔记'}</span>
           <input class="grow" value="${esc(c.text)}" data-change="editColText" data-id="${c.id}" />
           <button class="mini" data-action="doneEdit" data-id="${c.id}">完成</button>
         </div>
@@ -355,7 +357,7 @@
     const hasMeta = c.projectId || (c.tags && c.tags.length);
     return `<div class="card" data-id="${c.id}" style="border-left-color:${projectColor(c.projectId)}">
       <div class="line">
-        <span class="badge">${isIdea ? '灵感' : '笔记'}</span>
+        <span class="tag tag--${isIdea ? 'idea' : 'note'}">${isIdea ? '灵感' : '笔记'}</span>
         <span class="grow">${esc(c.text)}</span>
         ${isIdea ? statusPill('idea', c.ideaStatus) : ''}
         ${isIdea && c.ideaStatus !== 'converted' ? `<button class="mini" data-action="ideaToTask" data-id="${c.id}">转待办</button>` : ''}
@@ -600,6 +602,7 @@
   actions.editAccProject = (el) => { state = L.updateEntity(state, 'logEntries', el.dataset.id, { projectId: el.value || null }); save(); };
   actions.editAccType = (el) => { state = L.updateEntity(state, 'logEntries', el.dataset.id, { workType: el.value || null }); save(); };
   actions.editAccTags = (el) => { state = L.updateEntity(state, 'logEntries', el.dataset.id, { tags: parseTags(el.value) }); save(); };
+  actions.editAccNote = (el) => { state = L.updateEntity(state, 'logEntries', el.dataset.id, { note: el.value }); save(); };
   actions.deleteEntry = (el) => {
     const key = el.dataset.key, id = el.dataset.id;
     const item = state[key].find((x) => x.id === id);
@@ -615,8 +618,8 @@
     save(); render(); toast('已全部带入今天');
   };
   actions.completeTask = (el) => {
-    state = L.updateEntity(state, 'tasks', el.dataset.id, { status: 'done', completedAt: new Date().toISOString() });
-    save(); render(); toast('已完成 🎉');
+    state = L.completeTaskWithLog(state, el.dataset.id, L.isoDate(new Date()), new Date().toISOString());
+    save(); render(); toast('已完成 🎉，已记入今日成果');
   };
   actions.dayPrev = () => { selectedDate = L.shiftDate(selectedDate, -1); render(); };
   actions.dayNext = () => { selectedDate = L.shiftDate(selectedDate, 1); render(); };

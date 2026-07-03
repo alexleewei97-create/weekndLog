@@ -8,6 +8,7 @@
   --doing: #2f74e0; --doing-bg: #e8f1fd;
   --warn: #9a6400; --warn-bg: #fff3e0;
   --danger: #d64545; --danger-bg: #fdecec;
+  --note: #0e7490; --note-bg: #e0f2fe;
   --radius: 12px; --radius-sm: 8px;
   --shadow-1: 0 1px 2px rgba(20,30,50,.06), 0 1px 3px rgba(20,30,50,.05);
   --shadow-2: 0 4px 14px rgba(20,30,50,.10);
@@ -22,6 +23,7 @@
   --doing: #6aa5f5; --doing-bg: #16233a;
   --warn: #e0a44a; --warn-bg: #33280f;
   --danger: #ef6b6b; --danger-bg: #3a1e1e;
+  --note: #5eb6cc; --note-bg: #123642;
   --shadow-1: 0 1px 2px rgba(0,0,0,.4);
   --shadow-2: 0 6px 18px rgba(0,0,0,.5);
 }
@@ -140,7 +142,7 @@ details.fold[open] > summary::before { content: "▾ "; }
 .tag { flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; margin-top: 2px; }
 .tag--result { background: var(--brand-weak); color: var(--brand-ink); }
 .tag--done { background: var(--ok-bg); color: var(--ok); }
-.tag--note { background: var(--surface-2); color: var(--ink-2); }
+.tag--note { background: var(--note-bg); color: var(--note); }
 .tag--idea { background: var(--warn-bg); color: var(--warn); }
 
 .rowacts { display: inline-flex; gap: 2px; margin-left: auto; }
@@ -150,3 +152,4 @@ details.fold[open] > summary::before { content: "▾ "; }
 .iconbtn.danger:hover { color: var(--danger); background: var(--danger-bg); }
 .tag-chip { font-size: 11px; color: var(--muted); }
 .pdot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.acc-note { margin: 4px 0 0 26px; font-size: 13px; }
