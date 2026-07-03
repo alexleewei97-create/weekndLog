@@ -370,6 +370,7 @@
     </div>`;
   }
   function renderCollection() {
+    const addType = state.settings.collectAddType === 'note' ? 'note' : 'idea';
     const q = (colFilter.query || '').toLowerCase();
     const list = state.collectionItems.filter((c) => {
       if (colFilter.type && c.type !== colFilter.type) return false;
@@ -378,9 +379,13 @@
     });
     return `<section class="pad">
       <h2>收集</h2>
+      <div class="seg" role="group" aria-label="回车新增类型">
+        <span class="seg-label">回车新增为</span>
+        <button class="seg-btn seg--note${addType === 'note' ? ' active' : ''}" data-action="setColAddType" data-type="note">📝 笔记</button>
+        <button class="seg-btn seg--idea${addType === 'idea' ? ' active' : ''}" data-action="setColAddType" data-type="idea">💡 灵感</button>
+      </div>
       <div class="addrow">
-        <input id="col-input" class="grow" data-submit="addNote" placeholder="记一条笔记…（回车添加为笔记）" />
-        <button class="mini" data-action="addIdeaBtn">+ 存为灵感</button>
+        <input id="col-input" class="grow" data-submit="addColItem" placeholder="${addType === 'note' ? '记一条笔记…（回车添加）' : '记一条灵感…（回车添加）'}" />
       </div>
       <div class="filters">
         <select data-change="colType">
@@ -511,12 +516,15 @@
   actions.doneEdit = (el) => { editing.delete(el.dataset.id); render(); };
 
   let reportSel = { type: 'week', week: null, month: null };
+  let reportMode = 'edit';
+  let reportText = '';
+  let reportEdited = false;
   function renderReport() {
     if (!reportSel.week) reportSel.week = L.weekId(new Date());
     if (!reportSel.month) reportSel.month = L.monthId(new Date());
     const type = reportSel.type;
     const pid = type === 'week' ? reportSel.week : reportSel.month;
-    const text = L.generateReport(state, type, pid);
+    if (!reportEdited) reportText = L.generateReport(state, type, pid);
     const H = (state.settings.reportTemplates && state.settings.reportTemplates.headings) || {};
     return `<section class="pad">
       <h2>汇报</h2>
@@ -530,7 +538,13 @@
         <button class="mini" data-action="reportNext">下一期 →</button>
         <button class="mini" data-action="reportRegen">重新生成</button>
       </div>
-      <textarea id="report-text" class="report">${esc(text)}</textarea>
+      <div class="seg" role="group" aria-label="编辑或预览">
+        <button class="seg-btn${reportMode === 'edit' ? ' active' : ''}" data-action="reportMode" data-mode="edit">编辑</button>
+        <button class="seg-btn${reportMode === 'preview' ? ' active' : ''}" data-action="reportMode" data-mode="preview">预览</button>
+      </div>
+      ${reportMode === 'preview'
+        ? `<div class="md-preview">${L.mdToHtml(reportText)}</div>`
+        : `<textarea id="report-text" class="report" data-change="editReportText">${esc(reportText)}</textarea>`}
       <div class="addrow"><button class="primary" data-action="reportCopy">复制到剪贴板</button>
         <span class="muted">生成后可在上面手动微调，复制的是你当前编辑的内容。</span></div>
       <details class="fold"><summary>自定义模板标题</summary><div class="meta">
@@ -549,14 +563,15 @@
     state = { ...state, settings: { ...state.settings, reportTemplates: { ...rt, headings } } };
     save();
   }
-  actions.reportType = (el) => { reportSel.type = el.value; render(); };
-  actions.reportPrev = () => { const t = reportSel.type; reportSel[t] = L.shiftPeriod(t, reportSel[t], -1); render(); };
-  actions.reportNext = () => { const t = reportSel.type; reportSel[t] = L.shiftPeriod(t, reportSel[t], 1); render(); };
-  actions.reportRegen = () => { render(); };
+  actions.reportMode = (el) => { reportMode = el.dataset.mode === 'preview' ? 'preview' : 'edit'; render(); };
+  actions.editReportText = (el) => { reportText = el.value; reportEdited = true; };
+  actions.reportType = (el) => { reportSel.type = el.value; reportEdited = false; render(); };
+  actions.reportPrev = () => { const t = reportSel.type; reportSel[t] = L.shiftPeriod(t, reportSel[t], -1); reportEdited = false; render(); };
+  actions.reportNext = () => { const t = reportSel.type; reportSel[t] = L.shiftPeriod(t, reportSel[t], 1); reportEdited = false; render(); };
+  actions.reportRegen = () => { reportEdited = false; render(); };
   actions.reportCopy = async () => {
-    const ta = document.getElementById('report-text');
-    try { await navigator.clipboard.writeText(ta.value); }
-    catch (e) { ta.select(); document.execCommand('copy'); }
+    try { await navigator.clipboard.writeText(reportText); }
+    catch (e) { const ta = document.getElementById('report-text'); if (ta) { ta.select(); document.execCommand('copy'); } }
     toast('已复制到剪贴板');
   };
   actions.tplProgress = (el) => setHeading('progress', el.value);
@@ -649,8 +664,8 @@
   actions.editGoalProject = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { projectId: el.value || null }); save(); };
   actions.editGoalNote = (el) => { state = L.updateEntity(state, 'goals', el.dataset.id, { progressNote: el.value }); save(); };
 
-  actions.addNote = (el) => { const text = el.value.trim(); if (!text) return; state = L.addCollection(state, { type: 'note', text }); el.value = ''; save(); render(); };
-  actions.addIdeaBtn = () => { const inp = document.getElementById('col-input'); const text = (inp && inp.value.trim()) || ''; if (!text) { toast('先在输入框写点灵感内容'); return; } state = L.addCollection(state, { type: 'idea', text }); inp.value = ''; save(); render(); };
+  actions.setColAddType = (el) => { const type = el.dataset.type === 'note' ? 'note' : 'idea'; state = { ...state, settings: { ...state.settings, collectAddType: type } }; save(); render(); };
+  actions.addColItem = (el) => { const text = el.value.trim(); if (!text) return; const type = state.settings.collectAddType === 'note' ? 'note' : 'idea'; state = L.addCollection(state, { type, text }); el.value = ''; save(); render(); };
   actions.ideaToTask = (el) => { state = L.convertIdeaToTask(state, el.dataset.id, new Date().toISOString()).state; save(); render(); toast('已转为待办'); };
   actions.editColText = (el) => { state = L.updateEntity(state, 'collectionItems', el.dataset.id, { text: el.value }); save(); };
   actions.editColProject = (el) => { state = L.updateEntity(state, 'collectionItems', el.dataset.id, { projectId: el.value || null }); save(); };

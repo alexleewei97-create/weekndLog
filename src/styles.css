@@ -153,3 +153,24 @@ details.fold[open] > summary::before { content: "▾ "; }
 .tag-chip { font-size: 11px; color: var(--muted); }
 .pdot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
 .acc-note { margin: 4px 0 0 26px; font-size: 13px; }
+
+/* v1.4 segmented control (collect add-type / report edit-preview) */
+.seg { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 12px; }
+.seg-label { color: var(--muted); font-size: 13px; margin-right: 2px; }
+.seg-btn { border: 1px solid var(--border); background: var(--surface); color: var(--ink-2);
+  padding: 5px 14px; border-radius: 999px; font-size: 13.5px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.seg-btn:hover { background: var(--surface-2); border-color: var(--border-strong); color: var(--ink); }
+.seg-btn.active { background: var(--brand-weak); color: var(--brand-ink); border-color: var(--brand); font-weight: 600; }
+.seg-btn.seg--note.active { background: var(--note-bg); color: var(--note); border-color: var(--note); }
+.seg-btn.seg--idea.active { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+
+/* v1.4 report markdown preview */
+.md-preview { width: 100%; min-height: 340px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); padding: 16px 20px; line-height: 1.7; overflow-wrap: anywhere; }
+.md-preview h2 { font-size: 19px; margin: 4px 0 10px; }
+.md-preview h3 { font-size: 16px; margin: 16px 0 6px; }
+.md-preview h4 { font-size: 14px; margin: 12px 0 4px; color: var(--ink-2); }
+.md-preview p { margin: 6px 0; }
+.md-preview ul { margin: 6px 0; padding-left: 22px; }
+.md-preview li { margin: 3px 0; }
+.md-preview strong { color: var(--ink); }
