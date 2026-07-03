@@ -373,6 +373,27 @@
     return days;
   }
 
+  function mdToHtml(md) {
+    const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const inline = (s) => escHtml(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    const lines = String(md == null ? '' : md).split('\n');
+    const out = [];
+    let inList = false;
+    const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+    for (const raw of lines) {
+      const line = raw.replace(/\s+$/, '');
+      if (/^### /.test(line)) { closeList(); out.push('<h4>' + inline(line.slice(4)) + '</h4>'); }
+      else if (/^## /.test(line)) { closeList(); out.push('<h3>' + inline(line.slice(3)) + '</h3>'); }
+      else if (/^# /.test(line)) { closeList(); out.push('<h2>' + inline(line.slice(2)) + '</h2>'); }
+      else if (/^- /.test(line)) { if (!inList) { out.push('<ul>'); inList = true; } out.push('<li>' + inline(line.slice(2)) + '</li>'); }
+      else if (line === '') { closeList(); }
+      else { closeList(); out.push('<p>' + inline(line) + '</p>'); }
+    }
+    closeList();
+    return out.join('');
+  }
+
   // ---- Additional functions are appended by later tasks, ABOVE this return. ----
 
   return {
@@ -389,6 +410,7 @@
     convertIdeaToTask,
     addProject, addWorkType,
     generateReport,
+    mdToHtml,
     buildTimeline,
     validateState,
     tasksForDay, archiveDays,

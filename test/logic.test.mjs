@@ -279,3 +279,30 @@ test('archiveDays does not double-show a task completed via completeTaskWithLog'
   assert.equal(day.entries.filter((e) => e.text === '做一件事').length, 1);
   assert.equal(day.tasksDone.filter((t) => t.text === '做一件事').length, 0);
 });
+
+test('mdToHtml renders the report markdown subset', () => {
+  const html = L.mdToHtml('# 周报\n## 重点\n- 项目A **完成**\n- 项目B\n\n普通段落');
+  assert.ok(html.includes('<h2>周报</h2>'), 'h2');
+  assert.ok(html.includes('<h3>重点</h3>'), 'h3');
+  assert.ok(html.includes('<ul>') && html.includes('</ul>'), 'ul wrap');
+  assert.ok(html.includes('<li>项目A <strong>完成</strong></li>'), 'li + strong');
+  assert.ok(html.includes('<li>项目B</li>'), 'second li');
+  assert.ok(html.includes('<p>普通段落</p>'), 'paragraph');
+});
+
+test('mdToHtml renders ### as h4', () => {
+  assert.ok(L.mdToHtml('### 小标题').includes('<h4>小标题</h4>'));
+});
+
+test('mdToHtml escapes HTML before rendering (XSS-safe)', () => {
+  const html = L.mdToHtml('普通 <b>x</b> & <script>y</script>');
+  assert.ok(html.includes('&lt;b&gt;x&lt;/b&gt;'), 'tags escaped');
+  assert.ok(html.includes('&amp;'), 'amp escaped');
+  assert.ok(!html.includes('<b>'), 'no raw tag');
+  assert.ok(!html.includes('<script>'), 'no raw script');
+});
+
+test('mdToHtml handles empty / null input', () => {
+  assert.equal(L.mdToHtml(''), '');
+  assert.equal(L.mdToHtml(null), '');
+});
