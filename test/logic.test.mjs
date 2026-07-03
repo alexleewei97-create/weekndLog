@@ -269,3 +269,13 @@ test('generateReport dedupes a task completed via completeTaskWithLog', () => {
   assert.equal((out.match(/任务A/g) || []).length, 1);
   assert.ok(!out.includes('任务A（已完成）'));
 });
+
+test('archiveDays does not double-show a task completed via completeTaskWithLog', () => {
+  let s = L.createEmptyState();
+  s = L.addTask(s, { text: '做一件事' });
+  const tid = s.tasks[0].id;
+  s = L.completeTaskWithLog(s, tid, '2026-07-03', '2026-07-03T10:00:00.000Z');
+  const day = L.archiveDays(s, {}).find((d) => d.date === '2026-07-03');
+  assert.equal(day.entries.filter((e) => e.text === '做一件事').length, 1);
+  assert.equal(day.tasksDone.filter((t) => t.text === '做一件事').length, 0);
+});

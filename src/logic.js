@@ -311,8 +311,9 @@
       if (!date) return;
       (dayMap[date] = dayMap[date] || { entries: [], tasksDone: [], collection: [] })[bucket].push(item);
     };
+    const loggedTaskIds = new Set(state.logEntries.map((e) => e.fromTaskId).filter(Boolean));
     for (const e of state.logEntries) if (matchItem(e)) add(e.date, 'entries', e);
-    for (const t of state.tasks) if (t.completedAt && matchItem(t)) add(t.completedAt.slice(0, 10), 'tasksDone', t);
+    for (const t of state.tasks) if (t.completedAt && !loggedTaskIds.has(t.id) && matchItem(t)) add(t.completedAt.slice(0, 10), 'tasksDone', t);
     for (const c of state.collectionItems) if (matchItem(c)) add((c.createdAt || '').slice(0, 10), 'collection', c);
 
     const months = [];
