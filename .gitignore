@@ -1,3 +1,4 @@
 weikenlog-data.json
 weikenlog-data.json.tmp
 backups/
+weikenlog-data.pre-*.json
