@@ -150,8 +150,17 @@
   function addLogEntry(state, fields) {
     const e = { id: uid('log'), date: fields.date || isoDate(new Date()), text: fields.text || '',
       projectId: fields.projectId || null, workType: fields.workType || null, tags: fields.tags || [],
-      isHighlight: !!fields.isHighlight, createdAt: fields.createdAt || new Date().toISOString() };
+      isHighlight: !!fields.isHighlight, note: fields.note || '', fromTaskId: fields.fromTaskId || null,
+      createdAt: fields.createdAt || new Date().toISOString() };
     return { ...state, logEntries: [...state.logEntries, e] };
+  }
+  function completeTaskWithLog(state, taskId, todayStr, nowIso) {
+    const task = state.tasks.find((t) => t.id === taskId);
+    if (!task) return state;
+    let s = updateEntity(state, 'tasks', taskId, { status: 'done', completedAt: nowIso });
+    s = addLogEntry(s, { text: task.text, date: todayStr, projectId: task.projectId,
+      workType: task.workType, tags: task.tags, isHighlight: false, note: '', fromTaskId: taskId, createdAt: nowIso });
+    return s;
   }
   function addTask(state, fields) {
     const t = { id: uid('task'), text: fields.text || '', projectId: fields.projectId || null,
@@ -254,7 +263,9 @@
 
     // 2) Outputs: log entries + tasks completed in period, grouped by project, highlights first.
     const logs = state.logEntries.filter((e) => inPeriod(e.date));
-    const doneTasks = state.tasks.filter((t) => t.status === 'done' && t.completedAt && inPeriod(t.completedAt.slice(0, 10)));
+    const loggedTaskIds = new Set(logs.map((e) => e.fromTaskId).filter(Boolean));
+    const doneTasks = state.tasks.filter((t) => t.status === 'done' && t.completedAt
+      && inPeriod(t.completedAt.slice(0, 10)) && !loggedTaskIds.has(t.id));
     const byProject = {};
     const push = (pid, line, hl) => { const k = pid || ''; (byProject[k] = byProject[k] || []).push({ line, hl }); };
     for (const e of logs) push(e.projectId, `${e.workType ? `[${e.workType}] ` : ''}${e.text}`, e.isHighlight);
@@ -371,7 +382,7 @@
     isoDate, parseDate, weekId, monthId, quarterId, halfId,
     periodRange, periodLabel, shiftPeriod, dateInPeriod, shiftDate,
     addCapture, updateEntity, removeEntity,
-    addLogEntry, addTask, addCollection, triageCapture,
+    addLogEntry, completeTaskWithLog, addTask, addCollection, triageCapture,
     unfinishedBefore, carryOverTask, filterTasks,
     addGoal, goalsFor,
     convertIdeaToTask,

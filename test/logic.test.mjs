@@ -236,3 +236,36 @@ test('archiveDays: chronological order, month-start flags, query filter', () => 
   assert.deepEqual(days.map((d) => d.isMonthStart), [true, true, false]);
   assert.deepEqual(L.archiveDays(s, { query: '七月晚' }).map((d) => d.date), ['2026-07-10']);
 });
+
+test('completeTaskWithLog marks done and appends a linked 成果', () => {
+  let s = L.createEmptyState();
+  s = L.addProject(s, { name: '消消乐' });
+  const pid = s.projects[0].id;
+  s = L.addTask(s, { text: '写关卡', projectId: pid, workType: '策划', tags: ['关卡'] });
+  const tid = s.tasks[0].id;
+  s = L.completeTaskWithLog(s, tid, '2026-07-03', '2026-07-03T10:00:00.000Z');
+  assert.equal(s.tasks[0].status, 'done');
+  assert.equal(s.tasks[0].completedAt, '2026-07-03T10:00:00.000Z');
+  assert.equal(s.logEntries.length, 1);
+  const e = s.logEntries[0];
+  assert.equal(e.text, '写关卡'); assert.equal(e.date, '2026-07-03');
+  assert.equal(e.projectId, pid); assert.equal(e.workType, '策划');
+  assert.deepEqual(e.tags, ['关卡']); assert.equal(e.fromTaskId, tid);
+  assert.equal(e.note, ''); assert.equal(e.isHighlight, false);
+});
+
+test('completeTaskWithLog is a no-op for an unknown task id', () => {
+  const s = L.createEmptyState();
+  assert.equal(L.completeTaskWithLog(s, 'nope', '2026-07-03', '2026-07-03T10:00:00.000Z'), s);
+});
+
+test('generateReport dedupes a task completed via completeTaskWithLog', () => {
+  let s = L.createEmptyState();
+  s = L.addTask(s, { text: '任务A' });
+  const tid = s.tasks[0].id;
+  s = L.completeTaskWithLog(s, tid, '2026-07-03', '2026-07-03T10:00:00.000Z');
+  const wid = L.weekId(L.parseDate('2026-07-03'));
+  const out = L.generateReport(s, 'week', wid);
+  assert.equal((out.match(/任务A/g) || []).length, 1);
+  assert.ok(!out.includes('任务A（已完成）'));
+});
