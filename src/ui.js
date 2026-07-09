@@ -205,7 +205,7 @@
     const longSection = longterm.length
       ? `${sectionTitle('长线任务', longterm.length)}${longterm.map((t) => todayTaskRow(t, selectedDate)).join('')}` : '';
     return `<section class="pad">${overdueHtml}${sectionTitle(isToday ? '今日待办' : '当天待办', dueGroup.length)}
-      <div class="addrow"><input id="today-task-input" data-submit="addTodayTask" placeholder="新增待办到这天…（回车添加）" /></div>
+      <div class="addrow"><input id="today-task-input" data-submit="addTodayTask" data-change="editTodayTaskDraft" value="${esc(todayTaskDraft)}" placeholder="新增待办到这天…（回车添加）" /></div>
       ${dueHtml}${longSection}</section>`;
   }
 
@@ -276,6 +276,7 @@
 
   let planSel = null;
   let selectedDate = null;
+  let todayTaskDraft = '';
   const editing = new Set();
   function currentPeriods() {
     const now = new Date();
@@ -642,7 +643,8 @@
   actions.dayToday = () => { selectedDate = L.isoDate(new Date()); render(); };
 
   actions.addTaskInput = (el) => { const text = el.value.trim(); if (!text) return; state = L.addTask(state, { text }); el.value = ''; save(); render(); };
-  actions.addTodayTask = (el) => { const text = el.value.trim(); if (!text) return; state = L.addTask(state, { text, dueDate: selectedDate }); el.value = ''; save(); render(); };
+  actions.addTodayTask = (el) => { const text = el.value.trim(); if (!text) return; state = L.addTask(state, { text, dueDate: selectedDate }); el.value = ''; todayTaskDraft = ''; save(); render(); };
+  actions.editTodayTaskDraft = (el) => { todayTaskDraft = el.value; };
   actions.toggleFocus = (el) => { const t = state.tasks.find((x) => x.id === el.dataset.id); state = L.updateEntity(state, 'tasks', el.dataset.id, { isWeekFocus: !t.isWeekFocus }); save(); render(); };
   actions.editTaskText = (el) => { state = L.updateEntity(state, 'tasks', el.dataset.id, { text: el.value }); save(); };
   actions.editTaskStatus = (el) => { const patch = { status: el.value }; if (el.value === 'done') patch.completedAt = new Date().toISOString(); state = L.updateEntity(state, 'tasks', el.dataset.id, patch); save(); render(); };
